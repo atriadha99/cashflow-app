@@ -7,10 +7,9 @@ import {
   Card, CardBody, IconButton, Stat, StatLabel, StatNumber,
   useToast, Flex, Icon, Spinner, ButtonGroup
 } from "@chakra-ui/react";
-// Satu import saja untuk semua icon
 import { 
   Trash2, Plus, WalletCards, ArrowUpRight, ArrowDownRight, 
-  Sparkles, Camera, LogOut, User 
+  Camera, LogOut, User 
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "@/lib/supabase";
@@ -26,7 +25,7 @@ export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [text, setText] = useState("");
   const [amount, setAmount] = useState("");
-  const [type, setType] = useState<"expense" | "income">("expense"); // Default Pengeluaran
+  const [type, setType] = useState<"expense" | "income">("expense");
   
   const [isScanning, setIsScanning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +33,6 @@ export default function Home() {
   const toast = useToast();
   const router = useRouter();
 
-  // --- CEK LOGIN ---
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -81,6 +79,7 @@ export default function Home() {
         setTransactions([data[0], ...transactions]);
         toast({ title: "Tersimpan!", status: "success", duration: 1000 });
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({ title: "Gagal", description: error.message, status: "error" });
     }
@@ -93,7 +92,6 @@ export default function Home() {
       return;
     }
 
-    // LOGIKA: Jika Expense -> Negatif, Jika Income -> Positif
     let nominal = Math.abs(Number(amount)); 
     if (type === "expense") {
       nominal = nominal * -1;
@@ -115,7 +113,32 @@ export default function Home() {
     setTransactions(transactions.filter((t) => t.id !== id));
   };
 
-  // --- SCAN FITUR ---
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = document.createElement("img");
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -124,26 +147,38 @@ export default function Home() {
     toast({ title: "Menganalisis Struk...", status: "info" });
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = async () => {
-        const base64 = reader.result;
-        const response = await fetch("/api/scan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageBase64: base64 }),
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
+      const compressedBase64 = await resizeImage(file);
 
-        setText(data.text || "Struk Scan");
-        setType("expense"); // Default scan = pengeluaran
-        setAmount(Math.abs(Number(data.amount)).toString());
-        
-        setIsScanning(false);
-      };
-    } catch (error) {
-      toast({ title: "Gagal Scan", status: "error" });
+      const response = await fetch("/api/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageBase64: compressedBase64 }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+
+      setText(data.text || "Struk Scan");
+      setType("expense");
+      const cleanAmount = Math.abs(Number(data.amount) || 0);
+      setAmount(cleanAmount.toString());
+      
+      toast({ title: "Scan Berhasil!", status: "success" });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error("Scan Error:", error);
+      toast({ 
+        title: "Gagal Scan", 
+        description: error.message,
+        status: "error"
+      });
+    } finally {
       setIsScanning(false);
     }
   };
@@ -171,7 +206,6 @@ export default function Home() {
       <Container maxW="md" position="relative" zIndex={1} py={6}>
         <VStack spacing={5} align="stretch">
           
-          {/* HEADER DENGAN TOMBOL PROFILE & LOGOUT */}
           <Flex justify="space-between" align="center" px={2}>
             <Box>
               <Text fontSize="xs" color="gray.500" fontWeight="bold">WELCOME BACK</Text>
@@ -179,7 +213,6 @@ export default function Home() {
             </Box>
             
             <HStack>
-              {/* Tombol Profile */}
               <IconButton 
                 aria-label="Profile" 
                 icon={<Icon as={User} size={20} />}
@@ -190,7 +223,6 @@ export default function Home() {
                 onClick={() => router.push("/profile")}
               />
               
-              {/* Tombol Logout */}
               <IconButton 
                 aria-label="Logout" 
                 icon={<Icon as={LogOut} size={20}/>} 
@@ -201,7 +233,6 @@ export default function Home() {
             </HStack>
           </Flex>
 
-          {/* KARTU SALDO UTAMA */}
           <Box bgGradient="linear(to-br, #667eea, #764ba2)" color="white" p={8} borderRadius="3xl" boxShadow="2xl" position="relative" overflow="hidden">
             <VStack align="start" spacing={1} position="relative" zIndex={2}>
               <HStack color="whiteAlpha.800"><WalletCards size={18} /><Text fontSize="sm" fontWeight="medium">Saldo Saat Ini</Text></HStack>
@@ -210,13 +241,11 @@ export default function Home() {
             <Box position="absolute" right="-20px" top="-20px" boxSize="150px" bg="whiteAlpha.200" borderRadius="full" />
           </Box>
 
-          {/* RINGKASAN PEMASUKAN / PENGELUARAN */}
           <HStack spacing={3}>
             <Card flex={1} {...glassStyle}><CardBody p={3}><Stat><HStack mb={1}><ArrowDownRight size={16} color="#10b981" /><StatLabel fontSize="xs">Pemasukan</StatLabel></HStack><StatNumber fontSize="md" color="green.600">{formatRupiah(income)}</StatNumber></Stat></CardBody></Card>
             <Card flex={1} {...glassStyle}><CardBody p={3}><Stat><HStack mb={1}><ArrowUpRight size={16} color="#ef4444" /><StatLabel fontSize="xs">Pengeluaran</StatLabel></HStack><StatNumber fontSize="md" color="red.600">{formatRupiah(expense)}</StatNumber></Stat></CardBody></Card>
           </HStack>
 
-          {/* GRAFIK (Hanya muncul jika ada data) */}
           {(income > 0 || expense > 0) && (
             <Card {...glassStyle}>
               <CardBody display="flex" alignItems="center" justifyContent="space-between" p={4}>
@@ -238,12 +267,10 @@ export default function Home() {
             </Card>
           )}
 
-          {/* FORM TAMBAH TRANSAKSI */}
           <Card {...glassStyle} border="none" bg="white">
             <CardBody>
               <Heading size="sm" mb={4} color="gray.700">Tambah Transaksi</Heading>
               
-              {/* Toggle Tombol */}
               <ButtonGroup isAttached w="full" mb={4} variant="outline">
                 <Button 
                   w="50%" 
@@ -263,13 +290,11 @@ export default function Home() {
                 </Button>
               </ButtonGroup>
 
-              {/* Tombol Scan */}
               <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileUpload} />
               <Button w="full" mb={4} variant="ghost" colorScheme="purple" leftIcon={isScanning ? <Spinner size="sm" /> : <Camera size={18} />} onClick={() => fileInputRef.current?.click()} isDisabled={isScanning} borderStyle="dashed" borderWidth="2px">
                 Scan Struk (AI)
               </Button>
 
-              {/* Input Form Manual */}
               <form onSubmit={handleSubmit}>
                 <HStack spacing={3}>
                   <Input placeholder="Ket..." value={text} onChange={(e) => setText(e.target.value)} bg="gray.50" borderRadius="xl" />
@@ -290,7 +315,6 @@ export default function Home() {
             </CardBody>
           </Card>
 
-          {/* DAFTAR RIWAYAT */}
           <Box pb={10}>
             <Heading size="sm" mb={3} px={1} color="gray.600">Riwayat ({transactions.length})</Heading>
             <VStack spacing={3} align="stretch">

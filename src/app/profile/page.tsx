@@ -20,7 +20,6 @@ export default function ProfilePage() {
   const toast = useToast();
   const router = useRouter();
 
-  // 1. Ambil Data User saat halaman dibuka
   useEffect(() => {
     const getProfile = async () => {
       try {
@@ -35,7 +34,6 @@ export default function ProfilePage() {
         setUserId(user.id);
         setEmail(user.email || "");
 
-        // Ambil detail dari tabel 'profiles'
         const { data, error } = await supabase
           .from('profiles')
           .select('full_name, phone')
@@ -50,6 +48,7 @@ export default function ProfilePage() {
           setFullName(data.full_name || "");
           setPhone(data.phone || "");
         }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         console.error("Error loading user:", error.message);
       } finally {
@@ -60,7 +59,6 @@ export default function ProfilePage() {
     getProfile();
   }, [router]);
 
-  // 2. Fungsi Update Data
   const updateProfile = async () => {
     try {
       setLoading(true);
@@ -81,6 +79,7 @@ export default function ProfilePage() {
         status: "success",
         duration: 2000,
       });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: "Gagal Update",
@@ -96,7 +95,6 @@ export default function ProfilePage() {
     <Box minH="100vh" bg="#F3F4F6" py={8} px={4} fontFamily="var(--font-sans)">
       <Container maxW="md">
         
-        {/* Tombol Kembali */}
         <Button 
           leftIcon={<ArrowLeft size={18} />} 
           variant="ghost" 
@@ -108,14 +106,12 @@ export default function ProfilePage() {
 
         <VStack spacing={6} align="stretch">
           
-          {/* Kartu Profil Header */}
           <Flex direction="column" align="center" mb={4}>
             <Avatar size="2xl" name={fullName} bg="purple.500" mb={4} icon={<User size={40}/>} />
             <Heading size="md" color="gray.700">{fullName || "User Tanpa Nama"}</Heading>
             <Text fontSize="sm" color="gray.500">{email}</Text>
           </Flex>
 
-          {/* Form Edit */}
           <Card borderRadius="2xl" boxShadow="sm">
             <CardBody>
               <VStack spacing={4}>
@@ -141,7 +137,7 @@ export default function ProfilePage() {
                   <FormLabel fontSize="sm" color="gray.600">Nomor WhatsApp</FormLabel>
                   {loading ? <Skeleton height="40px" /> : (
                     <InputGroup>
-                      <InputLeftAddon children="+62" bg="gray.50" />
+                      <InputLeftAddon bg="gray.50">+62</InputLeftAddon>
                       <Input 
                         type="tel"
                         value={phone} 

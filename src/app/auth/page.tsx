@@ -24,11 +24,10 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthPage() {
-  // State Form
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState(""); // State untuk Nama
-  const [phone, setPhone] = useState("");       // State untuk No HP
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   
   const [loading, setLoading] = useState(false);
   const toast = useToast();
@@ -44,25 +43,22 @@ export default function AuthPage() {
 
     try {
       if (type === "REGISTER") {
-        // Validasi tambahan untuk pendaftaran
         if (!fullName) throw new Error("Nama Lengkap wajib diisi");
         if (!phone) throw new Error("Nomor Telepon wajib diisi");
 
-        // Daftar ke Supabase dengan Metadata tambahan
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              full_name: fullName, // Dikirim ke database (trigger)
-              phone: phone,        // Dikirim ke database (trigger)
+              full_name: fullName,
+              phone: phone,
             },
           },
         });
 
         if (error) throw error;
 
-        // Cek apakah user perlu verifikasi email
         if (data.user && !data.session) {
           toast({
             title: "Pendaftaran Berhasil!",
@@ -77,13 +73,13 @@ export default function AuthPage() {
         }
 
       } else {
-        // --- LOGIKA LOGIN ---
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         
         toast({ title: "Login Berhasil!", status: "success" });
-        router.push("/"); // Masuk ke dashboard
+        router.push("/");
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast({
         title: "Gagal",
@@ -102,7 +98,7 @@ export default function AuthPage() {
       display="flex"
       alignItems="center"
       justifyContent="center"
-      py={10} // Tambahan padding biar aman di layar HP
+      py={10}
     >
       <Container maxW="md" bg="white" p={8} borderRadius="2xl" boxShadow="xl">
         <Heading textAlign="center" mb={2} size="lg" color="purple.600">
@@ -119,7 +115,6 @@ export default function AuthPage() {
           </TabList>
           <TabPanels>
             
-            {/* --- PANEL LOGIN (Sederhana) --- */}
             <TabPanel>
               <VStack spacing={4}>
                 <FormControl>
@@ -152,10 +147,8 @@ export default function AuthPage() {
               </VStack>
             </TabPanel>
 
-            {/* --- PANEL DAFTAR (Lengkap) --- */}
             <TabPanel>
               <VStack spacing={4}>
-                {/* Input Nama Lengkap */}
                 <FormControl>
                   <FormLabel fontSize="sm">Nama Lengkap</FormLabel>
                   <Input
@@ -165,7 +158,6 @@ export default function AuthPage() {
                   />
                 </FormControl>
 
-                {/* Input Email */}
                 <FormControl>
                   <FormLabel fontSize="sm">Email</FormLabel>
                   <Input
@@ -176,11 +168,10 @@ export default function AuthPage() {
                   />
                 </FormControl>
                 
-                {/* Input Nomor Telepon */}
                 <FormControl>
                   <FormLabel fontSize="sm">Nomor WhatsApp</FormLabel>
                   <InputGroup>
-                    <InputLeftAddon children="+62" bg="gray.100" color="gray.500" />
+                    <InputLeftAddon bg="gray.100" color="gray.500">+62</InputLeftAddon>
                     <Input 
                       type="tel" 
                       placeholder="812xxxxxxx" 
@@ -190,7 +181,6 @@ export default function AuthPage() {
                   </InputGroup>
                 </FormControl>
 
-                {/* Input Password */}
                 <FormControl>
                   <FormLabel fontSize="sm">Password</FormLabel>
                   <Input
@@ -212,7 +202,7 @@ export default function AuthPage() {
                 </Button>
                 
                 <Text fontSize="xs" color="gray.400" textAlign="center" mt={2}>
-                  *Link verifikasi akan dikirim ke email Anda. Pastikan email aktif.
+                  *Link verifikasi akan dikirim ke email Anda.
                 </Text>
               </VStack>
             </TabPanel>
