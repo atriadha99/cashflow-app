@@ -7,8 +7,12 @@ import {
   Card, CardBody, IconButton, Stat, StatLabel, StatNumber,
   Flex, Icon, Spinner, ButtonGroup, Select, SimpleGrid,
   AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, useDisclosure,
-  Badge, Divider
-} from "@chakra-ui/react";
+  Badge 
+} from "@chakra-ui/react"; // HAPUS keyframes dari sini
+
+// TAMBAHKAN INI:
+import { keyframes } from "@emotion/react"; 
+
 import { 
   Trash2, Plus, WalletCards, ArrowUpRight, ArrowDownRight, 
   Camera, LogOut, User, Zap, TrendingUp, Moon, Sun, Banknote, CreditCard, Landmark
@@ -21,42 +25,68 @@ import { supabase } from "@/lib/supabase";
 const CATEGORIES = ["Makan", "Transport", "Belanja", "Tagihan", "Hiburan", "Gaji", "Lainnya"];
 const WALLETS = ["Tunai", "BCA", "Mandiri", "Gopay", "OVO", "Dana"];
 
+// --- 4. ANIMASI FLOATING (CSS Keyframes) ---
+const float1 = keyframes`
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(25px, -20px); }
+  100% { transform: translate(0, 0); }
+`;
+const float2 = keyframes`
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-20px, 25px); }
+  100% { transform: translate(0, 0); }
+`;
+
 export default function Home() {
   const { transactions, loading, user, addTransaction, deleteTransaction, resetData } = useTransactions();
   const router = useRouter();
   
-  // --- STATE TEMA (DARK/LIGHT) ---
+  // State UI
   const [isDark, setIsDark] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // --- PALET WARNA (NETFLIX VS JAPANESE) ---
+  // --- 1. THEME PERSISTENCE (LocalStorage) ---
+  useEffect(() => {
+    setIsMounted(true);
+    const savedTheme = localStorage.getItem("theme-dark");
+    if (savedTheme === "true") setIsDark(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMounted) {
+      localStorage.setItem("theme-dark", isDark.toString());
+    }
+  }, [isDark, isMounted]);
+
+  // --- CONFIG TEMA (CINEMATIC UPGRADE) ---
   const theme = {
-    // Background: Netflix Black (141414) vs Warm Beige
-    bg: isDark ? "#141414" : "#F3EDE4",           
+    // 2. Gradient Netflix yang lebih Mature & Cinematic
+    mainCardGradient: isDark 
+      ? "linear(to-br, #B20710, #330000)"  // Cinematic Dark Red
+      : "linear(to-br, #8A4B22, #A0522D)", // Warm Wood
+
+    bg: isDark ? "#0F0F0F" : "#F3EDE4", // Sedikit lebih gelap dari sebelumnya
+    text: isDark ? "#E5E5E5" : "#433831",
+    subText: isDark ? "#A3A3A3" : "#8C7E74",
+    cardBg: isDark ? "#18181B" : "#FFF8F0",
     
-    // Text: Pure White vs Dark Coffee
-    text: isDark ? "#FFFFFF" : "#433831",         
+    // 5. Premium Shadows
+    cardShadow: isDark 
+      ? "0 10px 30px -10px rgba(0,0,0,0.5)" 
+      : "0 10px 30px -10px rgba(138, 75, 34, 0.15)",
     
-    // Subtext: Netflix Grey vs Taupe
-    subText: isDark ? "#B3B3B3" : "#8C7E74",      
-    
-    // Card: Dark Grey vs Paper White
-    cardBg: isDark ? "#1F1F1F" : "#FFF8F0",       
-    
-    // Border: Subtle vs Very Subtle
-    cardBorder: isDark ? "whiteAlpha.200" : "blackAlpha.50",
-    
-    // Accent: NETFLIX RED (#E50914) vs Wood Brown
-    accent: isDark ? "#E50914" : "#8A4B22",       
-    
-    // Blobs: Ambient Red vs Warm Orange
+    cardBorder: isDark ? "whiteAlpha.100" : "blackAlpha.50",
+    accent: isDark ? "#E50914" : "#8A4B22",
     blob1: isDark ? "red.900" : "orange.100",
     blob2: isDark ? "black" : "yellow.100",
     
-    // Chart: Green/Red vs Sage/Terracotta
-    chartColors: isDark ? ["#46d369", "#E50914"] : ["#769F78", "#C26D60"], 
+    // 6. Chart Colors (Harmoni Japandi & Rich Classy)
+    chartColors: isDark 
+      ? ["#4CAF50", "#B20710"]  // Rich Green & Deep Red
+      : ["#7AA884", "#C8846B"], // Sage & Terracotta
   };
 
-  // Local UI States
+  // Local Form States
   const [text, setText] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("Lainnya");
@@ -64,18 +94,18 @@ export default function Home() {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [isScanning, setIsScanning] = useState(false);
   
+  // Filter States
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
-  // Reset Dialog
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Redirect Logic
   useEffect(() => {
-    if (!loading && !user) router.replace("/auth");
-  }, [loading, user, router]);
+    if (isMounted && !loading && !user) router.replace("/auth");
+  }, [isMounted, loading, user, router]);
 
   // Derived State
   const filteredData = useMemo(() => {
@@ -112,34 +142,65 @@ export default function Home() {
     setText(""); setAmount("");
   };
 
+  // Helper Resize Image
+  const resizeImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = document.createElement("img");
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const scaleSize = MAX_WIDTH / img.width;
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsScanning(true);
 
     try {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = async (ev) => {
-            const base64 = ev.target?.result;
-            const res = await fetch("/api/scan", {
-                method: "POST", 
-                body: JSON.stringify({ imageBase64: base64 })
-            });
-            const data = await res.json();
-            
-            setText(data.text || "Scan Result");
-            const detectedNominal = Math.abs(Number(data.amount) || 0);
-            setAmount(detectedNominal.toString());
-            setType("expense");
-            setCategory(detectCategory(data.text || ""));
-            setIsScanning(false);
-        };
+        const compressedBase64 = await resizeImage(file);
+        
+        const res = await fetch("/api/scan", {
+            method: "POST", 
+            body: JSON.stringify({ imageBase64: compressedBase64 })
+        });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || `Server Error: ${res.status}`);
+        }
+
+        const data = await res.json();
+        
+        setText(data.text || "Struk Scan");
+        const detectedNominal = Math.abs(Number(data.amount) || 0);
+        setAmount(detectedNominal.toString());
+        setType("expense");
+        setCategory(detectCategory(data.text || ""));
+        setIsScanning(false);
     } catch (err) {
         setIsScanning(false);
     }
   };
 
+  if (!isMounted) return null;
   if (loading || !user) return <Flex h="100vh" bg={theme.bg} justify="center" align="center"><Spinner size="xl" color={theme.accent} /></Flex>;
 
   return (
@@ -149,12 +210,20 @@ export default function Home() {
       color={theme.text}
       position="relative" 
       overflowX="hidden" 
-      transition="all 0.3s ease"
+      transition="all 0.4s ease-in-out"
       fontFamily="var(--font-sans)"
     >
-      {/* Background Blobs */}
-      <Box position="fixed" top="-10%" left="-10%" w="500px" h="500px" bg={theme.blob1} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} transition="all 0.5s ease" />
-      <Box position="fixed" bottom="10%" right="-5%" w="400px" h="400px" bg={theme.blob2} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} transition="all 0.5s ease" />
+      {/* 4. Background Blobs with Animation */}
+      <Box 
+        position="fixed" top="-10%" left="-10%" w="500px" h="500px" 
+        bg={theme.blob1} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} 
+        animation={`${float1} 12s ease-in-out infinite`} 
+      />
+      <Box 
+        position="fixed" bottom="10%" right="-5%" w="400px" h="400px" 
+        bg={theme.blob2} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} 
+        animation={`${float2} 18s ease-in-out infinite`} 
+      />
 
       <Container maxW="md" position="relative" zIndex={1} pt={6} pb={20}>
         <VStack spacing={5} align="stretch">
@@ -166,54 +235,58 @@ export default function Home() {
               <Heading size="md" color={theme.text}>Halo, {user?.user_metadata?.full_name?.split(' ')[0] || 'User'}</Heading>
             </Box>
             <HStack spacing={1}>
-                {/* Tombol Tema */}
+                {/* 3. Tombol Dark Mode Premium Animation */}
                 <IconButton 
                     aria-label="theme" 
                     icon={isDark ? <Sun size={18}/> : <Moon size={18}/>} 
                     onClick={() => setIsDark(!isDark)}
-                    bg={theme.cardBg} color={theme.accent} shadow="sm" borderRadius="xl" size="sm"
-                    _hover={{ transform: "scale(1.05)" }}
+                    bg={theme.cardBg}
+                    color={theme.accent}
+                    shadow="sm"
+                    borderRadius="xl"
+                    size="sm"
+                    transition="all 0.2s ease"
+                    _hover={{ transform: "scale(1.15)", rotate: "10deg" }}
                 />
-                {/* Tombol Reset (Tetap Ada) */}
                 <IconButton 
-                    aria-label="reset" 
-                    icon={<Trash2 size={18}/>} 
+                    aria-label="reset" icon={<Trash2 size={18}/>} 
                     bg={theme.cardBg} color="red.500" shadow="sm" borderRadius="xl" size="sm" 
-                    onClick={onOpen}
+                    onClick={onOpen} _hover={{ transform: "scale(1.05)" }}
                 />
                 <IconButton aria-label="profile" icon={<User size={18}/>} bg={theme.cardBg} color={theme.text} shadow="sm" borderRadius="xl" size="sm" onClick={() => router.push('/profile')} />
                 <IconButton aria-label="logout" icon={<LogOut size={18}/>} colorScheme="red" variant="ghost" size="sm" onClick={async() => { await supabase.auth.signOut(); router.push('/auth'); }} />
             </HStack>
           </Flex>
 
-          {/* MAIN CARD (NETFLIX GRADIENT saat Dark Mode) */}
+          {/* MAIN CARD */}
           <Box 
-            bgGradient={isDark ? "linear(to-br, #E50914, #991B1B)" : "linear(to-br, #8A4B22, #A0522D)"} 
+            bgGradient={theme.mainCardGradient} 
             color="white" 
             p={6} 
             borderRadius="2xl" 
-            boxShadow="xl" 
+            boxShadow={theme.cardShadow} 
             position="relative" 
             overflow="hidden"
+            transition="all 0.3s"
           >
             <VStack align="start" spacing={1} position="relative" zIndex={2}>
               <HStack color="whiteAlpha.900"><WalletCards size={18} /><Text fontSize="sm" fontWeight="medium">Total Aset</Text></HStack>
               <Heading size="2xl" letterSpacing="tight">{formatRupiah(totalBalance)}</Heading>
             </VStack>
-            {/* Dekorasi */}
-            <Box position="absolute" right="-20px" top="-30px" boxSize="120px" bg="whiteAlpha.200" borderRadius="full" />
+            {/* Dekorasi Abstrak */}
+            <Box position="absolute" right="-20px" top="-30px" boxSize="120px" bg="whiteAlpha.100" borderRadius="full" />
             <Box position="absolute" bottom="-40px" left="20px" boxSize="100px" bg="blackAlpha.300" borderRadius="full" />
           </Box>
 
           {/* SUMMARY CARDS */}
           <HStack spacing={3}>
-            <Card flex={1} bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="xl" boxShadow="sm" transition="all 0.3s">
+            <Card flex={1} bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="xl" boxShadow={theme.cardShadow} transition="all 0.3s">
                 <CardBody p={3}>
                     <HStack mb={1} color={theme.chartColors[0]}><ArrowDownRight size={16}/><Text fontSize="xs" fontWeight="bold">MASUK</Text></HStack>
                     <Text fontWeight="bold" fontSize="md" color={theme.text}>{formatRupiah(income)}</Text>
                 </CardBody>
             </Card>
-            <Card flex={1} bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="xl" boxShadow="sm" transition="all 0.3s">
+            <Card flex={1} bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="xl" boxShadow={theme.cardShadow} transition="all 0.3s">
                 <CardBody p={3}>
                     <HStack mb={1} color={theme.chartColors[1]}><ArrowUpRight size={16}/><Text fontSize="xs" fontWeight="bold">KELUAR</Text></HStack>
                     <Text fontWeight="bold" fontSize="md" color={theme.text}>{formatRupiah(Math.abs(expense))}</Text>
@@ -225,7 +298,7 @@ export default function Home() {
           <Heading size="xs" color={theme.subText} mt={2}>DOMPET</Heading>
           <SimpleGrid columns={2} spacing={3}>
             {WALLETS.filter(w => walletBalances[w] !== 0).map((w) => (
-                <Flex key={w} bg={theme.cardBg} p={3} borderRadius="xl" align="center" justify="space-between" border="1px" borderColor={theme.cardBorder}>
+                <Flex key={w} bg={theme.cardBg} p={3} borderRadius="xl" align="center" justify="space-between" border="1px" borderColor={theme.cardBorder} boxShadow={theme.cardShadow}>
                     <HStack>
                         <Icon as={w === "Tunai" ? Banknote : w.includes("BCA") ? Landmark : CreditCard} color={theme.accent} />
                         <Text fontSize="sm" fontWeight="bold" color={theme.text}>{w}</Text>
@@ -238,7 +311,7 @@ export default function Home() {
 
           {/* CHART */}
           {(income > 0 || expense < 0) && (
-            <Card bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="2xl" boxShadow="sm">
+            <Card bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="2xl" boxShadow={theme.cardShadow}>
               <CardBody display="flex" alignItems="center" justifyContent="space-between" p={4}>
                 <Box>
                   <Heading size="sm" mb={1} color={theme.text}>Analisis</Heading>
@@ -258,7 +331,7 @@ export default function Home() {
           )}
 
           {/* FORM INPUT */}
-          <Card bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="2xl" boxShadow="sm">
+          <Card bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="2xl" boxShadow={theme.cardShadow}>
             <CardBody>
               <Heading size="sm" mb={4} color={theme.text}>Catat Transaksi</Heading>
               
@@ -340,7 +413,15 @@ export default function Home() {
                             <Box>
                                 <Text fontWeight="bold" fontSize="sm" color={theme.text} noOfLines={1}>{t.text}</Text>
                                 <HStack spacing={1}>
-                                    <Badge fontSize="xx-small" colorScheme={isDark ? "red" : "purple"}>{t.category}</Badge>
+                                    {/* 7. CLEAN BADGE CATEGORY */}
+                                    <Badge 
+                                      fontSize="xx-small" 
+                                      bg={isDark ? "whiteAlpha.300" : "blackAlpha.200"} 
+                                      color={theme.text}
+                                      px={2} py={0.5} borderRadius="md"
+                                    >
+                                      {t.category}
+                                    </Badge>
                                     <Text fontSize="xs" color={theme.subText}>• {new Date(t.date).toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</Text>
                                 </HStack>
                             </Box>
