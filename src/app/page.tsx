@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Box, Container, Heading, Text, VStack, HStack, Input, Button,
   Card, CardBody, IconButton, Stat, StatLabel, StatNumber,
   Flex, Icon, Spinner, ButtonGroup, Select, SimpleGrid,
   AlertDialog, AlertDialogBody, AlertDialogFooter, AlertDialogHeader, AlertDialogContent, AlertDialogOverlay, useDisclosure,
-  Badge, Divider, Progress
+  Badge, Divider
 } from "@chakra-ui/react";
 import { 
   Trash2, Plus, WalletCards, ArrowUpRight, ArrowDownRight, 
-  Camera, LogOut, User, Zap, TrendingUp
+  Camera, LogOut, User, Zap, TrendingUp, Moon, Sun, Banknote, CreditCard, Landmark
 } from "lucide-react";
-// Import Hooks & Utils Modular
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useTransactions } from "@/hooks/useTransactions";
 import { formatRupiah, parseAmount, detectCategory, calculateForecast } from "@/utils/helpers";
 import { supabase } from "@/lib/supabase";
@@ -25,6 +25,37 @@ export default function Home() {
   const { transactions, loading, user, addTransaction, deleteTransaction, resetData } = useTransactions();
   const router = useRouter();
   
+  // --- STATE TEMA (DARK/LIGHT) ---
+  const [isDark, setIsDark] = useState(false);
+
+  // --- PALET WARNA (NETFLIX VS JAPANESE) ---
+  const theme = {
+    // Background: Netflix Black (141414) vs Warm Beige
+    bg: isDark ? "#141414" : "#F3EDE4",           
+    
+    // Text: Pure White vs Dark Coffee
+    text: isDark ? "#FFFFFF" : "#433831",         
+    
+    // Subtext: Netflix Grey vs Taupe
+    subText: isDark ? "#B3B3B3" : "#8C7E74",      
+    
+    // Card: Dark Grey vs Paper White
+    cardBg: isDark ? "#1F1F1F" : "#FFF8F0",       
+    
+    // Border: Subtle vs Very Subtle
+    cardBorder: isDark ? "whiteAlpha.200" : "blackAlpha.50",
+    
+    // Accent: NETFLIX RED (#E50914) vs Wood Brown
+    accent: isDark ? "#E50914" : "#8A4B22",       
+    
+    // Blobs: Ambient Red vs Warm Orange
+    blob1: isDark ? "red.900" : "orange.100",
+    blob2: isDark ? "black" : "yellow.100",
+    
+    // Chart: Green/Red vs Sage/Terracotta
+    chartColors: isDark ? ["#46d369", "#E50914"] : ["#769F78", "#C26D60"], 
+  };
+
   // Local UI States
   const [text, setText] = useState("");
   const [amount, setAmount] = useState("");
@@ -33,21 +64,20 @@ export default function Home() {
   const [type, setType] = useState<"expense" | "income">("expense");
   const [isScanning, setIsScanning] = useState(false);
   
-  // Filter States
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
 
+  // Reset Dialog
   const { isOpen, onOpen, onClose } = useDisclosure();
   const cancelRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Redirect jika belum login ---
-  if (!loading && !user) {
-    router.push("/auth");
-    return null;
-  }
+  // Redirect Logic
+  useEffect(() => {
+    if (!loading && !user) router.replace("/auth");
+  }, [loading, user, router]);
 
-  // --- Derived State (Analisis) ---
+  // Derived State
   const filteredData = useMemo(() => {
     return transactions.filter(t => {
       const d = new Date(t.date);
@@ -59,26 +89,27 @@ export default function Home() {
   const expense = filteredData.filter(t => t.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
   const totalBalance = transactions.reduce((a, b) => a + b.amount, 0);
   
-  // Forecast Data
-  const forecast = useMemo(() => calculateForecast(filteredData), [filteredData]);
+  const walletBalances = useMemo(() => {
+    const balances: Record<string, number> = {};
+    WALLETS.forEach(w => balances[w] = 0);
+    transactions.forEach(t => {
+        const wName = t.wallet || "Tunai";
+        if (balances[wName] !== undefined) balances[wName] += t.amount;
+    });
+    return balances;
+  }, [transactions]);
 
-  // --- Handlers ---
+  const chartData = [{ name: "Masuk", value: income }, { name: "Keluar", value: Math.abs(expense) }];
+
+  // Handlers
   const handleSave = async () => {
     if (!text || !amount) return;
-    
     let nominal = parseAmount(amount);
     if (type === "expense") nominal = -Math.abs(nominal);
     else nominal = Math.abs(nominal);
 
-    await addTransaction({
-      text,
-      amount: nominal,
-      category,
-      wallet
-    });
-
-    setText("");
-    setAmount("");
+    await addTransaction({ text, amount: nominal, category, wallet });
+    setText(""); setAmount("");
   };
 
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,8 +118,6 @@ export default function Home() {
     setIsScanning(true);
 
     try {
-        // Resize logic here (singkat saja krn di page sebelumnya sudah ada)
-        // ... anggaplah sudah compress ...
         const reader = new FileReader();
         reader.readAsDataURL(file);
         reader.onload = async (ev) => {
@@ -103,11 +132,7 @@ export default function Home() {
             const detectedNominal = Math.abs(Number(data.amount) || 0);
             setAmount(detectedNominal.toString());
             setType("expense");
-            
-            // Auto Detect Category dari text hasil scan
-            const autoCat = detectCategory(data.text || "");
-            setCategory(autoCat);
-            
+            setCategory(detectCategory(data.text || ""));
             setIsScanning(false);
         };
     } catch (err) {
@@ -115,126 +140,216 @@ export default function Home() {
     }
   };
 
-  if (loading) return <Flex h="100vh" justify="center" align="center"><Spinner size="xl" color="purple.500" /></Flex>;
+  if (loading || !user) return <Flex h="100vh" bg={theme.bg} justify="center" align="center"><Spinner size="xl" color={theme.accent} /></Flex>;
 
   return (
-    <Box minH="100vh" bg="#F8FAFC" position="relative" pb={20}>
-      {/* Abstract Background */}
-      <Box position="absolute" top={0} left={0} right={0} h="250px" bgGradient="linear(to-br, purple.600, blue.600)" borderBottomRadius="3xl" zIndex={0} />
+    <Box 
+      minH="100vh" 
+      bg={theme.bg} 
+      color={theme.text}
+      position="relative" 
+      overflowX="hidden" 
+      transition="all 0.3s ease"
+      fontFamily="var(--font-sans)"
+    >
+      {/* Background Blobs */}
+      <Box position="fixed" top="-10%" left="-10%" w="500px" h="500px" bg={theme.blob1} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} transition="all 0.5s ease" />
+      <Box position="fixed" bottom="10%" right="-5%" w="400px" h="400px" bg={theme.blob2} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} transition="all 0.5s ease" />
 
-      <Container maxW="md" position="relative" zIndex={1} pt={8}>
+      <Container maxW="md" position="relative" zIndex={1} pt={6} pb={20}>
         <VStack spacing={5} align="stretch">
           
-          {/* Top Bar */}
-          <Flex justify="space-between" align="center" color="white">
+          {/* HEADER */}
+          <Flex justify="space-between" align="center">
             <Box>
-              <Text fontSize="xs" opacity={0.8}>Total Balance</Text>
-              <Heading size="lg">{formatRupiah(totalBalance)}</Heading>
+              <Text fontSize="xs" color={theme.subText} letterSpacing="wider" fontWeight="bold">DASHBOARD</Text>
+              <Heading size="md" color={theme.text}>Halo, {user?.user_metadata?.full_name?.split(' ')[0] || 'User'}</Heading>
             </Box>
-            <HStack>
-                <IconButton icon={<Trash2 size={18}/>} aria-label="reset" variant="ghost" color="white" _hover={{bg:'whiteAlpha.200'}} onClick={onOpen} />
-                <IconButton icon={<User size={18}/>} aria-label="profile" variant="ghost" color="white" _hover={{bg:'whiteAlpha.200'}} onClick={() => router.push('/profile')} />
-                <IconButton icon={<LogOut size={18}/>} aria-label="logout" variant="ghost" color="white" _hover={{bg:'whiteAlpha.200'}} onClick={async() => { await supabase.auth.signOut(); router.push('/auth'); }} />
+            <HStack spacing={1}>
+                {/* Tombol Tema */}
+                <IconButton 
+                    aria-label="theme" 
+                    icon={isDark ? <Sun size={18}/> : <Moon size={18}/>} 
+                    onClick={() => setIsDark(!isDark)}
+                    bg={theme.cardBg} color={theme.accent} shadow="sm" borderRadius="xl" size="sm"
+                    _hover={{ transform: "scale(1.05)" }}
+                />
+                {/* Tombol Reset (Tetap Ada) */}
+                <IconButton 
+                    aria-label="reset" 
+                    icon={<Trash2 size={18}/>} 
+                    bg={theme.cardBg} color="red.500" shadow="sm" borderRadius="xl" size="sm" 
+                    onClick={onOpen}
+                />
+                <IconButton aria-label="profile" icon={<User size={18}/>} bg={theme.cardBg} color={theme.text} shadow="sm" borderRadius="xl" size="sm" onClick={() => router.push('/profile')} />
+                <IconButton aria-label="logout" icon={<LogOut size={18}/>} colorScheme="red" variant="ghost" size="sm" onClick={async() => { await supabase.auth.signOut(); router.push('/auth'); }} />
             </HStack>
           </Flex>
 
-          {/* Cards Summary */}
-          <HStack spacing={3} mt={2}>
-            <Card flex={1} borderRadius="2xl" boxShadow="lg">
+          {/* MAIN CARD (NETFLIX GRADIENT saat Dark Mode) */}
+          <Box 
+            bgGradient={isDark ? "linear(to-br, #E50914, #991B1B)" : "linear(to-br, #8A4B22, #A0522D)"} 
+            color="white" 
+            p={6} 
+            borderRadius="2xl" 
+            boxShadow="xl" 
+            position="relative" 
+            overflow="hidden"
+          >
+            <VStack align="start" spacing={1} position="relative" zIndex={2}>
+              <HStack color="whiteAlpha.900"><WalletCards size={18} /><Text fontSize="sm" fontWeight="medium">Total Aset</Text></HStack>
+              <Heading size="2xl" letterSpacing="tight">{formatRupiah(totalBalance)}</Heading>
+            </VStack>
+            {/* Dekorasi */}
+            <Box position="absolute" right="-20px" top="-30px" boxSize="120px" bg="whiteAlpha.200" borderRadius="full" />
+            <Box position="absolute" bottom="-40px" left="20px" boxSize="100px" bg="blackAlpha.300" borderRadius="full" />
+          </Box>
+
+          {/* SUMMARY CARDS */}
+          <HStack spacing={3}>
+            <Card flex={1} bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="xl" boxShadow="sm" transition="all 0.3s">
                 <CardBody p={3}>
-                    <HStack mb={1} color="green.500"><ArrowDownRight size={16}/><Text fontSize="xs" fontWeight="bold">INCOME</Text></HStack>
-                    <Text fontWeight="bold" fontSize="md">{formatRupiah(income)}</Text>
+                    <HStack mb={1} color={theme.chartColors[0]}><ArrowDownRight size={16}/><Text fontSize="xs" fontWeight="bold">MASUK</Text></HStack>
+                    <Text fontWeight="bold" fontSize="md" color={theme.text}>{formatRupiah(income)}</Text>
                 </CardBody>
             </Card>
-            <Card flex={1} borderRadius="2xl" boxShadow="lg">
+            <Card flex={1} bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="xl" boxShadow="sm" transition="all 0.3s">
                 <CardBody p={3}>
-                    <HStack mb={1} color="red.500"><ArrowUpRight size={16}/><Text fontSize="xs" fontWeight="bold">EXPENSE</Text></HStack>
-                    <Text fontWeight="bold" fontSize="md">{formatRupiah(expense)}</Text>
+                    <HStack mb={1} color={theme.chartColors[1]}><ArrowUpRight size={16}/><Text fontSize="xs" fontWeight="bold">KELUAR</Text></HStack>
+                    <Text fontWeight="bold" fontSize="md" color={theme.text}>{formatRupiah(Math.abs(expense))}</Text>
                 </CardBody>
             </Card>
           </HStack>
 
-          {/* AI FORECAST CARD (NEW Feature) */}
-          {(expense > 0) && (
-            <Card borderRadius="2xl" bgGradient="linear(to-r, gray.800, gray.900)" color="white" boxShadow="lg">
-                <CardBody p={4}>
-                    <Flex justify="space-between" align="center" mb={2}>
-                        <HStack><Zap size={16} color="#F6E05E" /><Text fontSize="sm" fontWeight="bold">Spending Insight</Text></HStack>
-                        <Badge colorScheme="yellow" variant="solid" fontSize="xx-small">AI BETA</Badge>
-                    </Flex>
-                    <Text fontSize="xs" opacity={0.8} mb={1}>Rata-rata pengeluaran harianmu:</Text>
-                    <Heading size="md" color="yellow.300" mb={3}>{formatRupiah(forecast.dailyAvg)} <span style={{fontSize:10, color:'white'}}>/ hari</span></Heading>
-                    
-                    <Box w="full" bg="whiteAlpha.200" borderRadius="full" h={1.5} mb={2}>
-                        <Box w="40%" h="full" bg="yellow.400" borderRadius="full" />
-                    </Box>
-                    <Text fontSize="xs" fontStyle="italic" opacity={0.6}>
-                        Prediksi bulan depan: {formatRupiah(forecast.nextMonthPrediction)}
-                    </Text>
-                </CardBody>
+          {/* INFO DOMPET */}
+          <Heading size="xs" color={theme.subText} mt={2}>DOMPET</Heading>
+          <SimpleGrid columns={2} spacing={3}>
+            {WALLETS.filter(w => walletBalances[w] !== 0).map((w) => (
+                <Flex key={w} bg={theme.cardBg} p={3} borderRadius="xl" align="center" justify="space-between" border="1px" borderColor={theme.cardBorder}>
+                    <HStack>
+                        <Icon as={w === "Tunai" ? Banknote : w.includes("BCA") ? Landmark : CreditCard} color={theme.accent} />
+                        <Text fontSize="sm" fontWeight="bold" color={theme.text}>{w}</Text>
+                    </HStack>
+                    <Text fontSize="xs" fontWeight="bold" color={theme.subText}>{formatRupiah(walletBalances[w])}</Text>
+                </Flex>
+            ))}
+            {Object.values(walletBalances).every(v => v === 0) && <Text fontSize="xs" color={theme.subText}>Belum ada saldo.</Text>}
+          </SimpleGrid>
+
+          {/* CHART */}
+          {(income > 0 || expense < 0) && (
+            <Card bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="2xl" boxShadow="sm">
+              <CardBody display="flex" alignItems="center" justifyContent="space-between" p={4}>
+                <Box>
+                  <Heading size="sm" mb={1} color={theme.text}>Analisis</Heading>
+                  <Text fontSize="xs" color={theme.subText}>Bulan {["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"][parseInt(filterMonth.toString())]} {filterYear}</Text>
+                </Box>
+                <Box h="80px" w="80px">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={chartData} innerRadius={25} outerRadius={35} paddingAngle={5} dataKey="value">
+                        {chartData.map((entry, index) => (<Cell key={`cell-${index}`} fill={theme.chartColors[index]} stroke="none" />))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </Box>
+              </CardBody>
             </Card>
           )}
 
-          {/* INPUT SECTION */}
-          <Box bg="white" p={4} borderRadius="2xl" boxShadow="sm">
-            <Heading size="sm" mb={4} color="gray.700">Transaksi Baru</Heading>
-            <VStack spacing={3}>
+          {/* FORM INPUT */}
+          <Card bg={theme.cardBg} border="1px" borderColor={theme.cardBorder} borderRadius="2xl" boxShadow="sm">
+            <CardBody>
+              <Heading size="sm" mb={4} color={theme.text}>Catat Transaksi</Heading>
+              
+              <VStack spacing={3}>
                 <ButtonGroup isAttached w="full" size="sm" variant="outline">
-                    <Button w="50%" colorScheme="red" variant={type==="expense"?"solid":"outline"} onClick={()=>setType("expense")}>Keluar</Button>
-                    <Button w="50%" colorScheme="green" variant={type==="income"?"solid":"outline"} onClick={()=>setType("income")}>Masuk</Button>
+                    <Button w="50%" borderColor={theme.cardBorder} color={type==="expense"?"white":theme.subText} bg={type==="expense"?"red.500":"transparent"} _hover={{}} onClick={()=>setType("expense")}>Keluar</Button>
+                    <Button w="50%" borderColor={theme.cardBorder} color={type==="income"?"white":theme.subText} bg={type==="income"?"green.500":"transparent"} _hover={{}} onClick={()=>setType("income")}>Masuk</Button>
                 </ButtonGroup>
                 
                 <Flex gap={2} w="full">
-                    <Select size="sm" borderRadius="lg" value={category} onChange={(e)=>setCategory(e.target.value)}>
+                    <Select bg={theme.bg} color={theme.text} borderColor={theme.cardBorder} size="sm" borderRadius="lg" value={category} onChange={(e)=>setCategory(e.target.value)}>
                         {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                     </Select>
-                    <Select size="sm" borderRadius="lg" value={wallet} onChange={(e)=>setWallet(e.target.value)}>
+                    <Select bg={theme.bg} color={theme.text} borderColor={theme.cardBorder} size="sm" borderRadius="lg" value={wallet} onChange={(e)=>setWallet(e.target.value)}>
                         {WALLETS.map(w => <option key={w} value={w}>{w}</option>)}
                     </Select>
                 </Flex>
 
-                <Input placeholder="Keterangan..." value={text} onChange={(e)=>setText(e.target.value)} size="sm" borderRadius="lg" />
+                <Input 
+                    placeholder="Keterangan..." 
+                    value={text} 
+                    onChange={(e)=>setText(e.target.value)} 
+                    bg={theme.bg} 
+                    color={theme.text}
+                    borderColor={theme.cardBorder}
+                    size="sm" 
+                    borderRadius="lg" 
+                    _placeholder={{ color: theme.subText }}
+                />
                 
                 <Flex gap={2} w="full">
-                    <Input type="number" placeholder="Rp..." value={amount} onChange={(e)=>setAmount(e.target.value)} size="sm" borderRadius="lg" />
-                    <IconButton aria-label="Scan" icon={isScanning ? <Spinner size="xs"/> : <Camera size={16}/>} size="sm" onClick={() => fileInputRef.current?.click()} />
+                    <Input 
+                        type="number" 
+                        placeholder="Rp..." 
+                        value={amount} 
+                        onChange={(e)=>setAmount(e.target.value)} 
+                        bg={theme.bg} 
+                        color={theme.text}
+                        borderColor={theme.cardBorder}
+                        size="sm" 
+                        borderRadius="lg"
+                        _placeholder={{ color: theme.subText }} 
+                    />
+                    <IconButton 
+                        aria-label="Scan" 
+                        icon={isScanning ? <Spinner size="xs"/> : <Camera size={16}/>} 
+                        size="sm" 
+                        bg={theme.bg}
+                        color={theme.text}
+                        borderColor={theme.cardBorder}
+                        border="1px"
+                        onClick={() => fileInputRef.current?.click()} 
+                    />
                     <input type="file" ref={fileInputRef} hidden onChange={handleScan} accept="image/*"/>
                 </Flex>
 
-                <Button w="full" colorScheme="purple" size="sm" onClick={handleSave}>Simpan Transaksi</Button>
-            </VStack>
-          </Box>
+                <Button w="full" bg={theme.accent} color="white" size="sm" _hover={{ opacity: 0.9 }} onClick={handleSave}>Simpan</Button>
+              </VStack>
+            </CardBody>
+          </Card>
 
           {/* LIST TRANSAKSI */}
           <Box pb={10}>
             <HStack justify="space-between" mb={3}>
-                <Heading size="sm" color="gray.600">Riwayat</Heading>
-                <Select w="120px" size="xs" value={filterMonth} onChange={(e)=>setFilterMonth(parseInt(e.target.value))}>
+                <Heading size="sm" color={theme.subText}>Riwayat</Heading>
+                <Select w="120px" size="xs" value={filterMonth} onChange={(e)=>setFilterMonth(parseInt(e.target.value))} bg={theme.cardBg} color={theme.text} borderColor={theme.cardBorder} borderRadius="lg">
                     {["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Ags","Sep","Okt","Nov","Des"].map((m,i)=>(<option key={i} value={i}>{m}</option>))}
                 </Select>
             </HStack>
 
             <VStack spacing={3} align="stretch">
-                {filteredData.length === 0 ? <Text textAlign="center" fontSize="sm" color="gray.400" py={4}>Belum ada data bulan ini.</Text> : 
+                {filteredData.length === 0 ? <Text textAlign="center" fontSize="sm" color={theme.subText} py={4}>Belum ada data bulan ini.</Text> : 
                  filteredData.map((t) => (
-                    <Flex key={t.id} bg="white" p={3} borderRadius="xl" boxShadow="sm" justify="space-between" align="center">
+                    <Flex key={t.id} bg={theme.cardBg} p={3} borderRadius="xl" boxShadow="sm" border="1px" borderColor={theme.cardBorder} justify="space-between" align="center">
                         <HStack>
-                            <Box p={2} bg={t.amount<0?"red.50":"green.50"} borderRadius="lg">
-                                {t.amount<0 ? <TrendingUp size={16} color="#F56565" style={{transform:'scaleY(-1)'}}/> : <TrendingUp size={16} color="#48BB78"/>}
+                            <Box p={2} bg={t.amount<0?"red.500": (isDark ? "green.600" : "green.500")} borderRadius="lg" color="white">
+                                {t.amount<0 ? <TrendingUp size={16} style={{transform:'scaleY(-1)'}}/> : <TrendingUp size={16}/>}
                             </Box>
                             <Box>
-                                <Text fontWeight="bold" fontSize="sm" noOfLines={1}>{t.text}</Text>
+                                <Text fontWeight="bold" fontSize="sm" color={theme.text} noOfLines={1}>{t.text}</Text>
                                 <HStack spacing={1}>
-                                    <Badge fontSize="xx-small" colorScheme="purple">{t.category}</Badge>
-                                    <Text fontSize="xs" color="gray.400">• {new Date(t.date).toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</Text>
+                                    <Badge fontSize="xx-small" colorScheme={isDark ? "red" : "purple"}>{t.category}</Badge>
+                                    <Text fontSize="xs" color={theme.subText}>• {new Date(t.date).toLocaleDateString('id-ID', {day:'numeric', month:'short'})}</Text>
                                 </HStack>
                             </Box>
                         </HStack>
                         <VStack align="end" spacing={0}>
-                            <Text fontWeight="bold" fontSize="sm" color={t.amount<0?"red.500":"green.500"}>
+                            <Text fontWeight="bold" fontSize="sm" color={t.amount<0 ? "red.500" : (isDark ? "green.400" : "green.600")}>
                                 {t.amount<0?"-":"+"}{formatRupiah(Math.abs(t.amount))}
                             </Text>
-                            <Text fontSize="xs" color="gray.400">{t.wallet}</Text>
+                            <Text fontSize="xs" color={theme.subText}>{t.wallet}</Text>
                         </VStack>
                     </Flex>
                 ))}
@@ -245,13 +360,13 @@ export default function Home() {
       </Container>
 
       {/* ALERT RESET */}
-      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose}>
+      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose} isCentered>
         <AlertDialogOverlay>
-          <AlertDialogContent m={4} borderRadius="xl">
-            <AlertDialogHeader>Reset Semua Data?</AlertDialogHeader>
-            <AlertDialogBody>Data yang dihapus tidak bisa kembali.</AlertDialogBody>
+          <AlertDialogContent m={4} borderRadius="xl" bg={theme.cardBg} color={theme.text}>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">Reset Data?</AlertDialogHeader>
+            <AlertDialogBody color={theme.subText}>Data yang dihapus tidak bisa kembali.</AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose} size="sm">Batal</Button>
+              <Button ref={cancelRef} onClick={onClose} size="sm" variant="ghost" color={theme.text}>Batal</Button>
               <Button colorScheme="red" onClick={() => {resetData(); onClose();}} ml={3} size="sm">Hapus</Button>
             </AlertDialogFooter>
           </AlertDialogContent>
