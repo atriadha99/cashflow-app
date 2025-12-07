@@ -26,8 +26,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 
-const CATEGORIES = ["Makan", "Transport", "Belanja", "Tagihan", "Hiburan", "Gaji", "Pemasukan Tambahan", "Lainnya"];
-const WALLETS = ["Tunai", "BCA", "Mandiri", "QRIS", "Debit", "Credit Card", "Gopay", "ShopeePay", "OVO", "Dana"];
+const CATEGORIES = ["Makan", "Transport", "Belanja", "Tagihan", "Hiburan", "Gaji", "Pemasukan Tambahan", "Lainnya", "Jajan"];
+const WALLETS = ["Tunai", "QRIS", "Debit", "Credit Card", "Gopay", "ShopeePay", "OVO", "Dana"];
 const DAILY_LIMIT = 100000;
 
 // Animasi Floating Background
