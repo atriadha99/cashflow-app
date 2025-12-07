@@ -10,7 +10,6 @@ export const formatRupiah = (num: number) => {
 
 export const parseAmount = (val: string): number => {
   if (!val) return 0;
-  // Hapus semua karakter kecuali angka dan minus
   const clean = val.replace(/[^0-9-]/g, "");
   const num = Number(clean);
   return isNaN(num) ? 0 : num;
@@ -26,19 +25,25 @@ export const detectCategory = (text: string): string => {
   return "Lainnya";
 };
 
-// Fitur AI Forecasting Sederhana
 export const calculateForecast = (transactions: any[]) => {
   if (transactions.length === 0) return { dailyAvg: 0, nextMonthPrediction: 0 };
-  
-  // Ambil transaksi pengeluaran bulan ini
   const expenses = transactions.filter(t => t.amount < 0);
   const totalExpense = expenses.reduce((acc, t) => acc + Math.abs(t.amount), 0);
-  
   const today = new Date().getDate();
-  const dailyAvg = totalExpense / (today || 1); // Hindari pembagian 0
-  
-  return {
-    dailyAvg,
-    nextMonthPrediction: dailyAvg * 30
-  };
+  const dailyAvg = totalExpense / (today || 1);
+  return { dailyAvg, nextMonthPrediction: dailyAvg * 30 };
+};
+
+// Helper baru untuk konversi file
+export const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const base64Content = base64String.split(',')[1]; 
+      resolve(base64Content);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };

@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, CartesianGrid } from "recharts";
 import { supabase } from "@/lib/supabase";
-import { formatRupiah, parseAmount, detectCategory } from "@/utils/helpers";
+// Import Helper yang sudah kita perbaiki
+import { formatRupiah, parseAmount, detectCategory, blobToBase64 } from "@/utils/helpers";
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -29,7 +30,7 @@ const CATEGORIES = ["Makan", "Transport", "Belanja", "Tagihan", "Hiburan", "Gaji
 const WALLETS = ["Tunai", "BCA", "Mandiri", "QRIS", "Debit", "Credit Card", "Gopay", "ShopeePay", "OVO", "Dana"];
 const DAILY_LIMIT = 100000;
 
-// Animasi Floating
+// Animasi Floating Background
 const float1 = keyframes`0% { transform: translate(0, 0); } 50% { transform: translate(25px, -20px); } 100% { transform: translate(0, 0); }`;
 const float2 = keyframes`0% { transform: translate(0, 0); } 50% { transform: translate(-20px, 25px); } 100% { transform: translate(0, 0); }`;
 
@@ -47,7 +48,7 @@ export default function SuperApp() {
   // Data
   const [transactions, setTransactions] = useState<any[]>([]);
   const [budgets, setBudgets] = useState<any[]>([]);
-  const [userPin, setUserPin] = useState("123456"); // Default PIN
+  const [userPin, setUserPin] = useState("123456"); 
 
   // Form Transaction
   const [text, setText] = useState("");
@@ -72,7 +73,7 @@ export default function SuperApp() {
   const [pinInput, setPinInput] = useState("");
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isMutasiUnlocked, setIsMutasiUnlocked] = useState(false);
-  const [isChangePinMode, setIsChangePinMode] = useState(false); // Mode ubah PIN di profile
+  const [isChangePinMode, setIsChangePinMode] = useState(false); 
 
   // Dialogs & Refs
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -94,7 +95,6 @@ export default function SuperApp() {
         setUser(session.user);
         fetchTransactions();
         fetchBudgets();
-        // Fetch PIN user (jika ada di profiles)
         const { data: profile } = await supabase.from('profiles').select('pin').eq('id', session.user.id).single();
         if (profile?.pin) setUserPin(profile.pin);
       }
@@ -106,7 +106,7 @@ export default function SuperApp() {
     if (isMounted) localStorage.setItem("theme-dark", isDark.toString());
   }, [isDark, isMounted]);
 
-  // --- TEMA: GRADASI MERAH PUTIH vs NETFLIX DARK ---
+  // --- TEMA CONFIG ---
   const theme = {
     bg: isDark ? "#0F0F0F" : "#FFFFFF", 
     navBg: isDark ? "#181818" : "#FFFFFF",
@@ -114,24 +114,18 @@ export default function SuperApp() {
     subText: isDark ? "#A3A3A3" : "#8C7E74",
     cardBg: isDark ? "#18181B" : "#FFFFFF",
     cardBorder: isDark ? "whiteAlpha.100" : "gray.100",
-    
-    // Main Brand Colors
-    primary: isDark ? "#E50914" : "#E53E3E", // Netflix Red vs Chakra Red
+    primary: isDark ? "#E50914" : "#E53E3E", 
     accent: isDark ? "#B20710" : "#FC8181",
-    
-    // Gradients
     homeGradient: isDark 
         ? "linear(to-br, #E50914, #831010)" 
-        : "linear(to-br, #E53E3E, #FFFFFF)", // Merah ke Putih
-    
+        : "linear(to-br, #E53E3E, #FFFFFF)",
     blob1: isDark ? "red.900" : "red.100",
     blob2: isDark ? "black" : "orange.100",
-    
     success: "#46d369",
     danger: "#E50914"
   };
 
-  // --- LOGIC ---
+  // --- DATA FETCHING ---
   const fetchTransactions = async () => {
     const { data } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
     if (data) setTransactions(data);
@@ -143,10 +137,10 @@ export default function SuperApp() {
     if (data) setBudgets(data);
   };
 
-  // --- PIN HANDLER ---
+  // --- PIN LOGIC ---
   const handleTabChange = (tab: any) => {
     if (tab === "mutasi" && !isMutasiUnlocked) {
-      setIsPinModalOpen(true); // Minta PIN dulu
+      setIsPinModalOpen(true);
     } else {
       setActiveTab(tab);
     }
@@ -154,7 +148,6 @@ export default function SuperApp() {
 
   const verifyPin = async () => {
     if (isChangePinMode) {
-      // Logic Ubah PIN
       const { error } = await supabase.from('profiles').update({ pin: pinInput }).eq('id', user.id);
       if (!error) {
         setUserPin(pinInput);
@@ -166,7 +159,6 @@ export default function SuperApp() {
         toast({ title: "Gagal Ubah PIN", status: "error" });
       }
     } else {
-      // Logic Masuk Mutasi
       if (pinInput === userPin) {
         setIsMutasiUnlocked(true);
         setIsPinModalOpen(false);
@@ -180,7 +172,7 @@ export default function SuperApp() {
     }
   };
 
-  // --- TRANSACTION HANDLERS ---
+  // --- TRANSACTION ACTIONS ---
   const handleSaveTransaction = async () => {
     if (!text || !amount) return;
     const nominal = parseAmount(amount);
@@ -202,7 +194,7 @@ export default function SuperApp() {
     setTransactions(transactions.filter(t => t.id !== id));
   };
 
-  // --- BUDGET HANDLERS ---
+  // --- BUDGET ACTIONS ---
   const handleAddBudget = async () => {
     if (!budgetName || !budgetTarget) return;
     const nominal = parseAmount(budgetTarget);
@@ -218,7 +210,6 @@ export default function SuperApp() {
     setBudgets(budgets.filter(b => b.id !== id));
   };
 
-  // --- RESET DATA (YANG TADI HILANG) ---
   const handleReset = async () => {
     try {
       const { error } = await supabase.from('transactions').delete().neq('id', 0);
@@ -260,6 +251,7 @@ export default function SuperApp() {
     toast({ title: "Membaca Struk...", status: "info" });
     try {
         const base64 = await resizeImage(file);
+        // Ganti URL ini jika di production/APK
         const res = await fetch("/api/scan", { method: "POST", body: JSON.stringify({ imageBase64: base64 }) });
         const data = await res.json();
         if(data.error) throw new Error();
@@ -274,7 +266,7 @@ export default function SuperApp() {
     } finally { setIsScanning(false); }
   };
 
-  // --- EXPORT TO EMAIL / FILE ---
+  // --- FILTER & DATA ---
   const filteredData = useMemo(() => {
     return transactions.filter(t => {
       const d = new Date(t.date);
@@ -286,6 +278,7 @@ export default function SuperApp() {
     });
   }, [transactions, filterMonth, filterYear, filterDate, filterType]);
 
+  // --- EXPORT HANDLERS ---
   const handleExport = (type: 'pdf' | 'excel') => {
     if (type === 'pdf') {
         const doc = new jsPDF();
@@ -301,27 +294,71 @@ export default function SuperApp() {
         XLSX.utils.book_append_sheet(wb, ws, "Data");
         XLSX.writeFile(wb, "Laporan_Keuangan.xlsx");
     }
-    toast({ title: "File Diunduh", description: "Silakan lampirkan file ini ke email Anda.", status: "success", isClosable: true });
+    toast({ title: "File Diunduh", status: "success", isClosable: true });
   };
 
-  const handleEmailRequest = () => {
-      const subject = `Laporan Keuangan ${user?.email}`;
-      const body = `Halo, ini adalah permintaan laporan keuangan untuk periode ${parseInt(filterMonth)+1}/${filterYear}. (Lampirkan file PDF/Excel di sini)`;
-      window.location.href = `mailto:${user?.email}?subject=${subject}&body=${body}`;
+  // Fungsi Kirim Email (UPDATED)
+  const handleEmailRequest = async () => {
+    if (!user?.email) {
+      toast({ title: "Email tidak ditemukan", status: "error" });
+      return;
+    }
+
+    const toastId = toast({ title: "Sedang memproses...", status: "info", duration: null });
+
+    try {
+      const doc = new jsPDF();
+      doc.text(`Laporan Keuangan: ${parseInt(filterMonth)+1}/${filterYear}`, 14, 10);
+      
+      const tableRows = filteredData.map(t => [
+        new Date(t.date).toLocaleDateString('id-ID'),
+        t.text,
+        t.category,
+        t.wallet,
+        t.amount > 0 ? formatRupiah(t.amount) : "-",
+        t.amount < 0 ? formatRupiah(Math.abs(t.amount)) : "-"
+      ]);
+
+      autoTable(doc, { 
+        head: [["Tgl", "Ket", "Kat", "Via", "Masuk", "Keluar"]], 
+        body: tableRows 
+      });
+
+      // Konversi PDF ke Base64 menggunakan helper yang diimport
+      const pdfBlob = doc.output('blob');
+      const base64String = await blobToBase64(pdfBlob); 
+
+      // Kirim ke API Route
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: user.email,
+          fileBase64: base64String,
+          fileName: `Laporan_Keuangan_${filterMonth}_${filterYear}.pdf`,
+          period: `${parseInt(filterMonth)+1}/${filterYear}`
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Gagal kirim email");
+
+      toast.close(toastId);
+      toast({ title: "Email Terkirim! 📧", description: `Laporan dikirim ke ${user.email}`, status: "success", isClosable: true });
+
+    } catch (error: any) {
+      toast.close(toastId);
+      console.error("Email Error:", error);
+      toast({ title: "Gagal Kirim Email", description: error.message, status: "error" });
+    }
   };
 
   // --- CALC ---
   const income = filteredData.filter(t => t.amount > 0).reduce((a, b) => a + b.amount, 0);
   const expense = filteredData.filter(t => t.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
   const totalBalance = transactions.reduce((a, b) => a + b.amount, 0);
-  
-  // Daily Warning
-  const todayExpense = transactions
-    .filter(t => new Date(t.date).toDateString() === new Date().toDateString() && t.amount < 0)
-    .reduce((a, b) => a + Math.abs(b.amount), 0);
+  const todayExpense = transactions.filter(t => new Date(t.date).toDateString() === new Date().toDateString() && t.amount < 0).reduce((a, b) => a + Math.abs(b.amount), 0);
   const isOverBudget = todayExpense > DAILY_LIMIT;
-
-  // Percentage Analysis
   const totalFlow = income + expense;
   const inPct = totalFlow ? Math.round((income / totalFlow) * 100) : 0;
   const outPct = totalFlow ? Math.round((expense / totalFlow) * 100) : 0;
@@ -352,15 +389,13 @@ export default function SuperApp() {
             <Avatar name={user?.user_metadata?.full_name} bg={theme.primary} color="white" size="sm" />
           </Flex>
 
-          {/* Kartu Saldo (Gradient Merah Putih di Light Mode) */}
           <Box bgGradient={theme.homeGradient} color={isDark ? "white" : "white"} p={6} borderRadius="2xl" shadow="xl" mb={6} position="relative" overflow="hidden">
             <HStack justify="space-between" mb={6} zIndex={2} position="relative">
-              <Text fontSize="sm" opacity={0.9} color={!isDark && "red.900"}>Total Saldo</Text>
-              <Icon as={WalletCards} opacity={0.9} color={!isDark && "red.900"} />
+              <Text fontSize="sm" opacity={0.9} color={!isDark ? "red.900" : "white"}>Total Saldo</Text>
+              <Icon as={WalletCards} opacity={0.9} color={!isDark ? "red.900" : "white"} />
             </HStack>
-            <Heading size="2xl" mb={1} zIndex={2} position="relative" color={!isDark && "red.900"}>{formatRupiah(totalBalance)}</Heading>
-            <Text fontSize="xs" opacity={0.8} zIndex={2} position="relative" color={!isDark && "red.800"}>TemuCashflow • {user?.email}</Text>
-            {/* Dekorasi */}
+            <Heading size="2xl" mb={1} zIndex={2} position="relative" color={!isDark ? "red.900" : "white"}>{formatRupiah(totalBalance)}</Heading>
+            <Text fontSize="xs" opacity={0.8} zIndex={2} position="relative" color={!isDark ? "red.800" : "white"}>TemuCashflow • {user?.email}</Text>
             <Box position="absolute" right="-30px" top="-30px" boxSize="150px" bg="whiteAlpha.200" borderRadius="full" />
           </Box>
 
@@ -371,7 +406,6 @@ export default function SuperApp() {
             </Alert>
           )}
 
-          {/* INPUT FORM */}
           <Card bg={theme.cardBg} borderRadius="2xl" shadow="sm" mb={6} border="1px" borderColor={theme.cardBorder}>
             <CardBody>
                 <Heading size="sm" mb={4} color={theme.text}>Catat Transaksi</Heading>
@@ -395,19 +429,16 @@ export default function SuperApp() {
                         <input type="file" ref={galleryInputRef} hidden accept="image/*" onChange={handleScan}/>
                     </Flex>
                     <Button w="full" bg={theme.primary} color="white" size="sm" onClick={handleSaveTransaction} isDisabled={!text || !amount}>Simpan</Button>
-                    {(!text || !amount) && <Text fontSize="xx-small" color="red.400" alignSelf="start">* Wajib diisi</Text>}
                 </VStack>
             </CardBody>
           </Card>
         </Container>
       )}
 
-      {/* --- TAB 2: MUTASI (Protected by PIN) --- */}
+      {/* --- TAB 2: MUTASI --- */}
       {activeTab === "mutasi" && (
         <Container maxW="md" pt={6} position="relative" zIndex={1}>
             <Heading size="lg" mb={4}>Mutasi & Analisis</Heading>
-            
-            {/* Filter */}
             <Card bg={theme.cardBg} borderRadius="xl" shadow="sm" mb={4} p={3} border="1px" borderColor={theme.cardBorder}>
                 <VStack spacing={3}>
                     <ButtonGroup size="sm" isAttached w="full">
@@ -423,21 +454,12 @@ export default function SuperApp() {
                 </VStack>
             </Card>
 
-            {/* Charts (Bar & Pie) */}
             <Card bg={theme.cardBg} borderRadius="xl" shadow="sm" mb={4} overflow="hidden" border="1px" borderColor={theme.cardBorder}>
                 <CardBody p={3}>
                     <Text fontSize="xs" fontWeight="bold" mb={2}>Analisis Persentase</Text>
                     <HStack spacing={4} mb={3}>
-                        <Box flex={1}>
-                            <Text fontSize="xx-small" color={theme.subText}>Masuk</Text>
-                            <Progress value={inPct} size="xs" colorScheme="green" borderRadius="full" mb={1}/>
-                            <Text fontSize="xs" fontWeight="bold">{inPct}%</Text>
-                        </Box>
-                        <Box flex={1}>
-                            <Text fontSize="xx-small" color={theme.subText}>Keluar</Text>
-                            <Progress value={outPct} size="xs" colorScheme="red" borderRadius="full" mb={1}/>
-                            <Text fontSize="xs" fontWeight="bold">{outPct}%</Text>
-                        </Box>
+                        <Box flex={1}><Text fontSize="xx-small" color={theme.subText}>Masuk</Text><Progress value={inPct} size="xs" colorScheme="green" borderRadius="full" mb={1}/><Text fontSize="xs" fontWeight="bold">{inPct}%</Text></Box>
+                        <Box flex={1}><Text fontSize="xx-small" color={theme.subText}>Keluar</Text><Progress value={outPct} size="xs" colorScheme="red" borderRadius="full" mb={1}/><Text fontSize="xs" fontWeight="bold">{outPct}%</Text></Box>
                     </HStack>
                     <Box h="150px">
                         <ResponsiveContainer width="100%" height="100%">
@@ -453,22 +475,12 @@ export default function SuperApp() {
                 </CardBody>
             </Card>
 
-            {/* List Transaksi */}
             <VStack spacing={3} pb={10}>
                 {filteredData.map((t) => (
                     <Flex key={t.id} bg={theme.cardBg} p={3} borderRadius="xl" shadow="sm" border="1px" borderColor={theme.cardBorder} justify="space-between" align="center" w="full">
                         <HStack>
-                            <VStack align="center" bg={theme.bg} p={1} borderRadius="md" w="40px">
-                                <Text fontSize="xs" fontWeight="bold">{new Date(t.date).getDate()}</Text>
-                                <Text fontSize="xx-small">{new Date(t.date).toLocaleDateString('id-ID',{month:'short'})}</Text>
-                            </VStack>
-                            <VStack align="start" spacing={0}>
-                                <Text fontWeight="bold" fontSize="sm">{t.text}</Text>
-                                <HStack spacing={1}>
-                                    <Badge fontSize="xx-small" colorScheme="purple">{t.wallet}</Badge>
-                                    <Badge fontSize="xx-small" colorScheme="gray">{t.category}</Badge>
-                                </HStack>
-                            </VStack>
+                            <VStack align="center" bg={theme.bg} p={1} borderRadius="md" w="40px"><Text fontSize="xs" fontWeight="bold">{new Date(t.date).getDate()}</Text><Text fontSize="xx-small">{new Date(t.date).toLocaleDateString('id-ID',{month:'short'})}</Text></VStack>
+                            <VStack align="start" spacing={0}><Text fontWeight="bold" fontSize="sm">{t.text}</Text><HStack spacing={1}><Badge fontSize="xx-small" colorScheme="purple">{t.wallet}</Badge><Badge fontSize="xx-small" colorScheme="gray">{t.category}</Badge></HStack></VStack>
                         </HStack>
                         <VStack align="end" spacing={0}>
                             <Text fontWeight="bold" fontSize="sm" color={t.amount<0?theme.danger:theme.success}>{t.amount>0?"+":""}{formatRupiah(t.amount)}</Text>
@@ -480,12 +492,11 @@ export default function SuperApp() {
         </Container>
       )}
 
-      {/* --- TAB 3: BUDGET (Blu Style) --- */}
+      {/* --- TAB 3: BUDGET --- */}
       {activeTab === "budget" && (
         <Container maxW="md" pt={6} position="relative" zIndex={1}>
             <Heading size="lg" mb={2}>Budget Plan</Heading>
             <Text fontSize="sm" color={theme.subText} mb={6}>Kelola pos pengeluaran rutin.</Text>
-
             <Card bg={theme.cardBg} borderRadius="2xl" shadow="sm" mb={6} border="1px" borderColor={theme.cardBorder}>
                 <CardBody>
                     <HStack>
@@ -495,15 +506,11 @@ export default function SuperApp() {
                     </HStack>
                 </CardBody>
             </Card>
-
             <SimpleGrid columns={2} spacing={4}>
                 {budgets.map((b) => (
                     <Card key={b.id} bg={theme.cardBg} borderRadius="2xl" shadow="sm" border="1px" borderColor={theme.cardBorder}>
                         <CardBody p={4}>
-                            <Flex justify="space-between" mb={2}>
-                                <Icon as={Wallet} color={theme.primary} />
-                                <IconButton aria-label="del" icon={<Trash2 size={14}/>} size="xs" variant="ghost" colorScheme="red" onClick={()=>handleDeleteBudget(b.id)}/>
-                            </Flex>
+                            <Flex justify="space-between" mb={2}><Icon as={Wallet} color={theme.primary} /><IconButton aria-label="del" icon={<Trash2 size={14}/>} size="xs" variant="ghost" colorScheme="red" onClick={()=>handleDeleteBudget(b.id)}/></Flex>
                             <Text fontWeight="bold" fontSize="sm" mb={1}>{b.name}</Text>
                             <Text fontSize="xs" color={theme.subText}>Target: {formatRupiah(b.target_amount)}</Text>
                         </CardBody>
@@ -513,54 +520,31 @@ export default function SuperApp() {
         </Container>
       )}
 
-      {/* --- TAB 4: PROFILE & EXPORT --- */}
+      {/* --- TAB 4: PROFILE --- */}
       {activeTab === "profile" && (
         <Container maxW="md" pt={10} position="relative" zIndex={1}>
             <VStack spacing={6}>
                 <Avatar size="2xl" name={user?.user_metadata?.full_name} bg={theme.primary} />
-                <VStack spacing={0}>
-                    <Heading size="md">{user?.user_metadata?.full_name}</Heading>
-                    <Text color={theme.subText}>{user?.email}</Text>
-                </VStack>
-
-                {/* Export Tools */}
+                <VStack spacing={0}><Heading size="md">{user?.user_metadata?.full_name}</Heading><Text color={theme.subText}>{user?.email}</Text></VStack>
+                
                 <Card w="full" bg={theme.cardBg} borderRadius="2xl" shadow="sm" border="1px" borderColor={theme.cardBorder}>
                     <CardBody>
                         <Text fontSize="xs" fontWeight="bold" mb={3} color={theme.subText}>EXPORT DATA</Text>
                         <HStack justify="space-around">
-                            <VStack onClick={()=>handleExport('pdf')} cursor="pointer">
-                                <IconButton aria-label="pdf" icon={<FileText/>} colorScheme="red" variant="outline" isRound />
-                                <Text fontSize="xs">PDF</Text>
-                            </VStack>
-                            <VStack onClick={()=>handleExport('excel')} cursor="pointer">
-                                <IconButton aria-label="excel" icon={<FileSpreadsheet/>} colorScheme="green" variant="outline" isRound />
-                                <Text fontSize="xs">Excel</Text>
-                            </VStack>
-                            <VStack onClick={handleEmailRequest} cursor="pointer">
-                                <IconButton aria-label="email" icon={<Mail/>} colorScheme="blue" variant="outline" isRound />
-                                <Text fontSize="xs">Email</Text>
-                            </VStack>
+                            <VStack onClick={()=>handleExport('pdf')} cursor="pointer"><IconButton aria-label="pdf" icon={<FileText/>} colorScheme="red" variant="outline" isRound /><Text fontSize="xs">PDF</Text></VStack>
+                            <VStack onClick={()=>handleExport('excel')} cursor="pointer"><IconButton aria-label="excel" icon={<FileSpreadsheet/>} colorScheme="green" variant="outline" isRound /><Text fontSize="xs">Excel</Text></VStack>
+                            <VStack onClick={handleEmailRequest} cursor="pointer"><IconButton aria-label="email" icon={<Mail/>} colorScheme="blue" variant="outline" isRound /><Text fontSize="xs">Email</Text></VStack>
                         </HStack>
                     </CardBody>
                 </Card>
 
-                {/* Settings */}
                 <Card w="full" bg={theme.cardBg} borderRadius="2xl" shadow="sm" border="1px" borderColor={theme.cardBorder}>
                     <CardBody>
                         <VStack spacing={0} divider={<Divider/>}>
-                            <Flex w="full" justify="space-between" p={3} align="center">
-                                <HStack><Icon as={isDark?Sun:Moon}/><Text fontSize="sm">Mode Gelap</Text></HStack>
-                                <Switch isChecked={isDark} onChange={(e)=>setIsDark(e.target.checked)} colorScheme="red" />
-                            </Flex>
-                            <Flex w="full" justify="space-between" p={3} align="center" cursor="pointer" onClick={()=>{setIsChangePinMode(true); setIsPinModalOpen(true);}}>
-                                <HStack><Icon as={Lock}/><Text fontSize="sm">Ubah PIN Mutasi</Text></HStack>
-                            </Flex>
-                            <Flex w="full" justify="space-between" p={3} align="center" cursor="pointer" onClick={onOpen}>
-                                <HStack color="red.500"><Trash2 size={18}/><Text fontSize="sm">Reset Semua Data</Text></HStack>
-                            </Flex>
-                            <Flex w="full" justify="space-between" p={3} align="center" cursor="pointer" onClick={async() => { await supabase.auth.signOut(); router.push('/auth'); }}>
-                                <HStack color="red.500"><LogOut size={18}/><Text fontSize="sm">Keluar</Text></HStack>
-                            </Flex>
+                            <Flex w="full" justify="space-between" p={3} align="center"><HStack><Icon as={isDark?Sun:Moon}/><Text fontSize="sm">Mode Gelap</Text></HStack><Switch isChecked={isDark} onChange={(e)=>setIsDark(e.target.checked)} colorScheme="red" /></Flex>
+                            <Flex w="full" justify="space-between" p={3} align="center" cursor="pointer" onClick={()=>{setIsChangePinMode(true); setIsPinModalOpen(true);}}><HStack><Icon as={Lock}/><Text fontSize="sm">Ubah PIN Mutasi</Text></HStack></Flex>
+                            <Flex w="full" justify="space-between" p={3} align="center" cursor="pointer" onClick={onOpen}><HStack color="red.500"><Trash2 size={18}/><Text fontSize="sm">Reset Semua Data</Text></HStack></Flex>
+                            <Flex w="full" justify="space-between" p={3} align="center" cursor="pointer" onClick={async() => { await supabase.auth.signOut(); router.push('/auth'); }}><HStack color="red.500"><LogOut size={18}/><Text fontSize="sm">Keluar</Text></HStack></Flex>
                         </VStack>
                     </CardBody>
                 </Card>
@@ -568,50 +552,35 @@ export default function SuperApp() {
         </Container>
       )}
 
-      {/* --- NAVIGATION BAR --- */}
-      <HStack position="fixed" bottom={0} left={0} right={0} bg={theme.navBg} h="80px" pb="15px" justify="space-around" shadow="0 -4px 20px rgba(0,0,0,0.1)" zIndex={99} borderTopRadius="2xl" borderTop="1px solid" borderColor={isDark ? "whiteAlpha.100" : "gray.100"}>
-        <VStack spacing={1} onClick={() => handleTabChange("home")} color={activeTab === "home" ? theme.primary : theme.subText} cursor="pointer" w="20%">
-            <Home size={24} strokeWidth={activeTab === "home" ? 2.5 : 2} />
-            <Text fontSize="10px" fontWeight="bold">Beranda</Text>
-        </VStack>
-        <VStack spacing={1} onClick={() => handleTabChange("mutasi")} color={activeTab === "mutasi" ? theme.primary : theme.subText} cursor="pointer" w="20%">
-            <History size={24} strokeWidth={activeTab === "mutasi" ? 2.5 : 2} />
-            <Text fontSize="10px" fontWeight="bold">Mutasi</Text>
-        </VStack>
-        <Box position="relative" top="-25px">
-            <IconButton aria-label="Add" icon={<Plus size={28}/>} bg={theme.primary} color="white" borderRadius="full" size="lg" shadow="lg" _hover={{transform: 'scale(1.1)'}} onClick={() => { setActiveTab("home"); setTimeout(() => document.getElementById("input-section")?.scrollIntoView({behavior:'smooth'}), 100); }} />
-        </Box>
-        <VStack spacing={1} onClick={() => handleTabChange("budget")} color={activeTab === "budget" ? theme.primary : theme.subText} cursor="pointer" w="20%">
-            <Target size={24} strokeWidth={activeTab === "budget" ? 2.5 : 2} />
-            <Text fontSize="10px" fontWeight="bold">Budget</Text>
-        </VStack>
-        <VStack spacing={1} onClick={() => handleTabChange("profile")} color={activeTab === "profile" ? theme.primary : theme.subText} cursor="pointer" w="20%">
-            <User size={24} strokeWidth={activeTab === "profile" ? 2.5 : 2} />
-            <Text fontSize="10px" fontWeight="bold">Akun</Text>
-        </VStack>
+      {/* NAVIGATION BAR (FIXED BOTTOM) */}
+      <HStack position="fixed" bottom={0} left={0} right={0} bg={theme.navBg} h="80px" pb="15px" justify="space-between" px={6} shadow="0 -4px 20px rgba(0,0,0,0.1)" zIndex={99} borderTopRadius="2xl" borderTop="1px solid" borderColor={isDark ? "whiteAlpha.100" : "gray.100"}>
+        <HStack spacing={8}>
+            <VStack spacing={1} onClick={() => handleTabChange("home")} color={activeTab === "home" ? theme.primary : theme.subText} cursor="pointer"><Home size={24} strokeWidth={activeTab === "home" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Beranda</Text></VStack>
+            <VStack spacing={1} onClick={() => handleTabChange("mutasi")} color={activeTab === "mutasi" ? theme.primary : theme.subText} cursor="pointer"><History size={24} strokeWidth={activeTab === "mutasi" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Mutasi</Text></VStack>
+        </HStack>
+        <HStack spacing={8}>
+            <VStack spacing={1} onClick={() => handleTabChange("budget")} color={activeTab === "budget" ? theme.primary : theme.subText} cursor="pointer"><Target size={24} strokeWidth={activeTab === "budget" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Budget</Text></VStack>
+            <VStack spacing={1} onClick={() => handleTabChange("profile")} color={activeTab === "profile" ? theme.primary : theme.subText} cursor="pointer"><User size={24} strokeWidth={activeTab === "profile" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Akun</Text></VStack>
+        </HStack>
       </HStack>
 
-      {/* --- PIN MODAL --- */}
+      {/* Floating Action Button */}
+      <Box position="fixed" bottom="30px" left="50%" transform="translateX(-50%)" zIndex={100}>
+        <IconButton aria-label="Add" icon={<Plus size={32}/>} bgGradient={isDark ? "linear(to-r, #E50914, #B20710)" : "linear(to-r, #E53E3E, #FC8181)"} color="white" borderRadius="full" width="65px" height="65px" shadow="0px 10px 20px rgba(229, 62, 62, 0.4)" border="6px solid" borderColor={theme.bg} _hover={{ transform: 'scale(1.1)' }} onClick={() => { setActiveTab("home"); setTimeout(() => document.getElementById("input-section")?.scrollIntoView({behavior:'smooth'}), 100); }} />
+      </Box>
+
+      {/* PIN Modal */}
       <Modal isOpen={isPinModalOpen} onClose={() => {setIsPinModalOpen(false); setIsChangePinMode(false);}} isCentered size="xs">
         <ModalOverlay backdropFilter="blur(5px)" />
         <ModalContent borderRadius="2xl" bg={theme.cardBg} color={theme.text}>
             <ModalHeader textAlign="center">{isChangePinMode ? "Buat PIN Baru" : "Masukkan PIN Mutasi"}</ModalHeader>
             <ModalBody pb={6} display="flex" justifyContent="center">
-                <HStack>
-                    <PinInput value={pinInput} onChange={setPinInput} onComplete={verifyPin} type="alphanumeric" mask>
-                        <PinInputField bg={theme.bg} borderColor={theme.cardBorder} />
-                        <PinInputField bg={theme.bg} borderColor={theme.cardBorder} />
-                        <PinInputField bg={theme.bg} borderColor={theme.cardBorder} />
-                        <PinInputField bg={theme.bg} borderColor={theme.cardBorder} />
-                        <PinInputField bg={theme.bg} borderColor={theme.cardBorder} />
-                        <PinInputField bg={theme.bg} borderColor={theme.cardBorder} />
-                    </PinInput>
-                </HStack>
+                <HStack><PinInput value={pinInput} onChange={setPinInput} onComplete={verifyPin} type="alphanumeric" mask><PinInputField bg={theme.bg} borderColor={theme.cardBorder} /><PinInputField bg={theme.bg} borderColor={theme.cardBorder} /><PinInputField bg={theme.bg} borderColor={theme.cardBorder} /><PinInputField bg={theme.bg} borderColor={theme.cardBorder} /><PinInputField bg={theme.bg} borderColor={theme.cardBorder} /><PinInputField bg={theme.bg} borderColor={theme.cardBorder} /></PinInput></HStack>
             </ModalBody>
         </ModalContent>
       </Modal>
 
-      {/* ALERT RESET */}
+      {/* Alert Dialog */}
       <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose} isCentered>
         <AlertDialogOverlay>
           <AlertDialogContent m={4} borderRadius="xl" bg={theme.cardBg} color={theme.text}>
