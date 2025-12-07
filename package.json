@@ -15,11 +15,14 @@
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.84.0",
     "framer-motion": "^10.18.0",
+    "jspdf": "^3.0.4",
+    "jspdf-autotable": "^5.0.2",
     "lucide-react": "^0.554.0",
     "next": "16.0.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "recharts": "^3.5.0"
+    "recharts": "^3.5.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^20",

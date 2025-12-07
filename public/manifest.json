@@ -1,0 +1,16 @@
+{
+  "name": "TemuCashflow",
+  "short_name": "TemuCashflow",
+  "description": "Temu tak sekedar tatap, tapi ada juga modal yang harus dicatat.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3EDE4",
+  "theme_color": "#8A4B22",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

@@ -7,11 +7,10 @@ import { Providers } from "./providers";
 const fontSans = Plus_Jakarta_Sans({ 
   subsets: ["latin"],
   variable: "--font-sans",
-});
-
-export const metadata: Metadata = {
-  title: "Cash Flow Aesthetic",
-  description: "Track your money with style",
+});export const metadata: Metadata = {
+  title: "TemuCashflow",
+  description: "Temu tak sekedar tatap, tapi ada juga modal yang harus dicatat.",
+  manifest: "/manifest.json", // Persiapan PWA
 };
 
 export default function RootLayout({
