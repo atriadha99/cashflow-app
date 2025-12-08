@@ -1,20 +1,24 @@
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// 1. WAJIB: Paksa mode dinamis agar tidak dijalankan saat Build
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
+    // 2. WAJIB: Inisialisasi DI DALAM fungsi (Local Scope)
+    // Jangan taruh 'const resend = ...' di luar fungsi POST!
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
     const { email, fileBase64, fileName, period } = await req.json();
 
     if (!email || !fileBase64) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    // Kirim Email via Resend
     const { data, error } = await resend.emails.send({
-      from: 'TemuCashflow <onboarding@resend.dev>', // Gunakan domain default Resend dulu (gratis)
-      to: [email], // Kirim ke email user
+      from: 'TemuCashflow <onboarding@resend.dev>',
+      to: [email],
       subject: `Laporan Keuangan - ${period}`,
       html: `
         <h1>Halo! 👋</h1>
