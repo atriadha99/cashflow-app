@@ -25,7 +25,7 @@ export async function POST(req: Request) {
         <p>Berikut adalah laporan keuangan Anda untuk periode <strong>${period}</strong>.</p>
         <p>Silakan unduh lampiran di bawah ini.</p>
         <br/>
-        <p><em>Terima kasih telah menggunakan TemuCashflow.</em></p>
+        <p><em>Terima kasih telah menggunakan TemuCashflow-app.</em></p>
       `,
       attachments: [
         {
