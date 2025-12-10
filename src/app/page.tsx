@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, CartesianGrid } from "recharts";
 import { supabase } from "@/lib/supabase";
-// Import Helper yang sudah kita perbaiki
 import { formatRupiah, parseAmount, detectCategory, blobToBase64 } from "@/utils/helpers";
 
 import jsPDF from "jspdf";
@@ -251,7 +250,6 @@ export default function SuperApp() {
     toast({ title: "Membaca Struk...", status: "info" });
     try {
         const base64 = await resizeImage(file);
-        // Ganti URL ini jika di production/APK
         const res = await fetch("/api/scan", { method: "POST", body: JSON.stringify({ imageBase64: base64 }) });
         const data = await res.json();
         if(data.error) throw new Error();
@@ -297,7 +295,6 @@ export default function SuperApp() {
     toast({ title: "File Diunduh", status: "success", isClosable: true });
   };
 
-  // Fungsi Kirim Email (UPDATED)
   const handleEmailRequest = async () => {
     if (!user?.email) {
       toast({ title: "Email tidak ditemukan", status: "error" });
@@ -324,11 +321,9 @@ export default function SuperApp() {
         body: tableRows 
       });
 
-      // Konversi PDF ke Base64 menggunakan helper yang diimport
       const pdfBlob = doc.output('blob');
       const base64String = await blobToBase64(pdfBlob); 
 
-      // Kirim ke API Route
       const response = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -365,10 +360,60 @@ export default function SuperApp() {
 
   if (!isMounted || loading || !user) return <Flex h="100vh" bg={theme.bg} justify="center" align="center"><Spinner size="xl" color={theme.primary}/></Flex>;
 
+  // --- BOTTOM NAV (FLOATING ISLAND) ---
+  const BottomNav = () => (
+    <Box position="fixed" bottom="20px" left={0} right={0} zIndex={99} px={4}>
+      <Box maxW="md" mx="auto" position="relative">
+        <HStack 
+          bg={theme.cardBg} h="70px" justify="space-between" px={6}
+          borderRadius="2xl" shadow="lg" border="1px solid" borderColor={theme.cardBorder}
+          backdropFilter="blur(10px)"
+        >
+          <HStack spacing={8}>
+            <VStack spacing={0} onClick={() => handleTabChange("home")} color={activeTab === "home" ? theme.primary : theme.subText} cursor="pointer" w="40px">
+                <Home size={22} strokeWidth={activeTab === "home" ? 2.5 : 2} />
+                <Text fontSize="9px" fontWeight={activeTab === "home" ? "bold" : "medium"} mt={1}>Home</Text>
+            </VStack>
+            <VStack spacing={0} onClick={() => handleTabChange("mutasi")} color={activeTab === "mutasi" ? theme.primary : theme.subText} cursor="pointer" w="40px">
+                <History size={22} strokeWidth={activeTab === "mutasi" ? 2.5 : 2} />
+                <Text fontSize="9px" fontWeight={activeTab === "mutasi" ? "bold" : "medium"} mt={1}>Mutasi</Text>
+            </VStack>
+          </HStack>
+
+          <Box w="40px" /> 
+
+          <HStack spacing={8}>
+            <VStack spacing={0} onClick={() => handleTabChange("budget")} color={activeTab === "budget" ? theme.primary : theme.subText} cursor="pointer" w="40px">
+                <Target size={22} strokeWidth={activeTab === "budget" ? 2.5 : 2} />
+                <Text fontSize="9px" fontWeight={activeTab === "budget" ? "bold" : "medium"} mt={1}>Budget</Text>
+            </VStack>
+            <VStack spacing={0} onClick={() => handleTabChange("profile")} color={activeTab === "profile" ? theme.primary : theme.subText} cursor="pointer" w="40px">
+                <User size={22} strokeWidth={activeTab === "profile" ? 2.5 : 2} />
+                <Text fontSize="9px" fontWeight={activeTab === "profile" ? "bold" : "medium"} mt={1}>Akun</Text>
+            </VStack>
+          </HStack>
+        </HStack>
+
+        <Box position="absolute" bottom="25px" left="50%" transform="translateX(-50%)" zIndex={100}>
+          <IconButton 
+            aria-label="Add" icon={<Plus size={28}/>} 
+            bgGradient={isDark ? "linear(to-r, #E50914, #B20710)" : "linear(to-r, #E53E3E, #FC8181)"}
+            color="white" borderRadius="full" width="56px" height="56px"
+            shadow="0px 8px 20px rgba(229, 62, 62, 0.4)" 
+            border="4px solid" borderColor={isDark ? "#0F0F0F" : "#F4F7FE"} // Warna border sama dengan BG
+            _hover={{ transform: 'scale(1.1)', shadow: "0px 12px 25px rgba(229, 62, 62, 0.6)" }} 
+            transition="all 0.3s ease"
+            onClick={() => { setActiveTab("home"); setTimeout(() => document.getElementById("input-section")?.scrollIntoView({behavior:'smooth'}), 100); }} 
+          />
+        </Box>
+      </Box>
+    </Box>
+  );
+
   return (
     <Box minH="100vh" bg={theme.bg} color={theme.text} pb="100px" fontFamily="var(--font-sans)" position="relative" overflowX="hidden">
       
-      {/* Background Blobs (Mode Gelap Only) */}
+      {/* Background Blobs */}
       {isDark && (
         <>
           <Box position="fixed" top="-10%" left="-10%" w="500px" h="500px" bg={theme.blob1} borderRadius="full" filter="blur(90px)" opacity={0.4} zIndex={0} animation={`${float1} 12s ease-in-out infinite`} />
@@ -552,22 +597,8 @@ export default function SuperApp() {
         </Container>
       )}
 
-      {/* NAVIGATION BAR (FIXED BOTTOM) */}
-      <HStack position="fixed" bottom={0} left={0} right={0} bg={theme.navBg} h="80px" pb="15px" justify="space-between" px={6} shadow="0 -4px 20px rgba(0,0,0,0.1)" zIndex={99} borderTopRadius="2xl" borderTop="1px solid" borderColor={isDark ? "whiteAlpha.100" : "gray.100"}>
-        <HStack spacing={8}>
-            <VStack spacing={1} onClick={() => handleTabChange("home")} color={activeTab === "home" ? theme.primary : theme.subText} cursor="pointer"><Home size={24} strokeWidth={activeTab === "home" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Beranda</Text></VStack>
-            <VStack spacing={1} onClick={() => handleTabChange("mutasi")} color={activeTab === "mutasi" ? theme.primary : theme.subText} cursor="pointer"><History size={24} strokeWidth={activeTab === "mutasi" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Mutasi</Text></VStack>
-        </HStack>
-        <HStack spacing={8}>
-            <VStack spacing={1} onClick={() => handleTabChange("budget")} color={activeTab === "budget" ? theme.primary : theme.subText} cursor="pointer"><Target size={24} strokeWidth={activeTab === "budget" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Budget</Text></VStack>
-            <VStack spacing={1} onClick={() => handleTabChange("profile")} color={activeTab === "profile" ? theme.primary : theme.subText} cursor="pointer"><User size={24} strokeWidth={activeTab === "profile" ? 2.5 : 2} /><Text fontSize="10px" fontWeight="bold">Akun</Text></VStack>
-        </HStack>
-      </HStack>
-
-      {/* Floating Action Button */}
-      <Box position="fixed" bottom="30px" left="50%" transform="translateX(-50%)" zIndex={100}>
-        <IconButton aria-label="Add" icon={<Plus size={32}/>} bgGradient={isDark ? "linear(to-r, #E50914, #B20710)" : "linear(to-r, #E53E3E, #FC8181)"} color="white" borderRadius="full" width="65px" height="65px" shadow="0px 10px 20px rgba(229, 62, 62, 0.4)" border="6px solid" borderColor={theme.bg} _hover={{ transform: 'scale(1.1)' }} onClick={() => { setActiveTab("home"); setTimeout(() => document.getElementById("input-section")?.scrollIntoView({behavior:'smooth'}), 100); }} />
-      </Box>
+      {/* FOOTER NAV */}
+      <BottomNav />
 
       {/* PIN Modal */}
       <Modal isOpen={isPinModalOpen} onClose={() => {setIsPinModalOpen(false); setIsChangePinMode(false);}} isCentered size="xs">
