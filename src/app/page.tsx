@@ -23,7 +23,8 @@ import { formatRupiah, parseAmount, detectCategory, blobToBase64 } from "@/utils
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 
 const CATEGORIES = ["Makan", "Transport", "Belanja", "Tagihan", "Hiburan", "Gaji", "Pemasukan Tambahan", "Lainnya", "Jajan"];
 const WALLETS = ["Tunai", "QRIS", "Debit", "Credit Card", "Gopay", "ShopeePay", "OVO", "Dana"];
@@ -277,7 +278,8 @@ export default function SuperApp() {
   }, [transactions, filterMonth, filterYear, filterDate, filterType]);
 
   // --- EXPORT HANDLERS ---
-  const handleExport = (type: 'pdf' | 'excel') => {
+  // --- EXPORT HANDLERS ---
+  const handleExport = async (type: 'pdf' | 'excel') => {
     if (type === 'pdf') {
         const doc = new jsPDF();
         doc.text(`Laporan: ${parseInt(filterMonth)+1}/${filterYear}`, 14, 10);
@@ -287,14 +289,38 @@ export default function SuperApp() {
         });
         doc.save("Laporan_Keuangan.pdf");
     } else {
-        const ws = XLSX.utils.json_to_sheet(filteredData.map(t => ({ Tgl: t.date, Ket: t.text, Rp: t.amount })));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Data");
-        XLSX.writeFile(wb, "Laporan_Keuangan.xlsx");
+        // --- LOGIKA BARU MENGGUNAKAN EXCELJS ---
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Data Keuangan');
+
+        // 1. Buat Header Kolom
+        worksheet.columns = [
+          { header: 'Tanggal', key: 'date', width: 15 },
+          { header: 'Keterangan', key: 'text', width: 30 },
+          { header: 'Kategori', key: 'category', width: 15 },
+          { header: 'Via', key: 'wallet', width: 10 },
+          { header: 'Nominal (Rp)', key: 'amount', width: 20 },
+        ];
+
+        // 2. Masukkan Data Baris per Baris
+        filteredData.forEach(t => {
+          worksheet.addRow({
+            date: new Date(t.date).toLocaleDateString('id-ID'),
+            text: t.text,
+            category: t.category,
+            wallet: t.wallet,
+            amount: t.amount // ExcelJS aman dengan angka, tidak perlu format string
+          });
+        });
+
+        // 3. Generate File & Download
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Laporan_Keuangan_${filterMonth}_${filterYear}.xlsx`);
     }
     toast({ title: "File Diunduh", status: "success", isClosable: true });
   };
-
+  
   const handleEmailRequest = async () => {
     if (!user?.email) {
       toast({ title: "Email tidak ditemukan", status: "error" });
