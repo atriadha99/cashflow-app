@@ -1,16 +1,17 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google"; // Ganti font
-import { Providers } from "./providers";
+// GANTI DARI @vercel/font-geist MENJADI INTER
+import { Inter } from "next/font/google"; 
+import "./globals.css";
 
-// Setup font
-const fontSans = Plus_Jakarta_Sans({ 
+// UBAH NAMA CONSTANT DARI geistSans MENJADI interSans
+const interSans = Inter({
   subsets: ["latin"],
-  variable: "--font-sans",
-});export const metadata: Metadata = {
+  variable: '--font-sans', 
+});
+
+export const metadata: Metadata = {
   title: "TemuCashflow",
-  description: "Temu tak sekedar tatap, tapi ada juga modal yang harus dicatat.",
-  manifest: "/manifest.json", // Persiapan PWA
+  description: "Aplikasi keuangan personal",
 };
 
 export default function RootLayout({
@@ -19,10 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id">
-      <body className={fontSans.className}>
-        <Providers>{children}</Providers>
-      </body>
+    // UBAH DARI geistSans.variable MENJADI interSans.variable
+    <html lang="en" className={`${interSans.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }
