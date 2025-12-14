@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-// GANTI KE FONT INTER DARI GOOGLE
-import { Inter } from "next/font/google"; 
+import { Inter } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
-// DEKLARASI FONT INTER
 const interSans = Inter({
   subsets: ["latin"],
-  variable: '--font-sans', 
+  variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -16,13 +16,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    // GUNAKAN VARIABEL interSans
-    <html lang="en" className={`${interSans.variable}`}>
-      <body>{children}</body>
+    <html lang="en" className={interSans.variable}>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
