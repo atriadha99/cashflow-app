@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-// GANTI DARI @vercel/font-geist MENJADI INTER
+// GANTI KE FONT INTER DARI GOOGLE
 import { Inter } from "next/font/google"; 
 import "./globals.css";
 
-// UBAH NAMA CONSTANT DARI geistSans MENJADI interSans
+// DEKLARASI FONT INTER
 const interSans = Inter({
   subsets: ["latin"],
   variable: '--font-sans', 
@@ -20,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // UBAH DARI geistSans.variable MENJADI interSans.variable
+    // GUNAKAN VARIABEL interSans
     <html lang="en" className={`${interSans.variable}`}>
       <body>{children}</body>
     </html>
