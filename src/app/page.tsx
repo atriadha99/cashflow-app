@@ -654,8 +654,7 @@ export default function SuperApp() {
             <Card bg={theme.cardBg} borderRadius="2xl" shadow="sm" mb={6} border="1px" borderColor={theme.cardBorder}>
                 <CardBody>
                     <HStack mb={3}><Icon as={Bell} mr={2} boxSize={4} color={theme.primary} /><Text fontSize="sm" fontWeight="bold" color={theme.text}>Pengaturan Reminder WA</Text></HStack>
-                    <Text fontSize="xs" mb={3} color={theme.subText}>Atur kapan Anda ingin diingatkan untuk Budget/Nabung setiap bulan. (Warning > Rp300rb akan dikirim *realtime*).</Text>
-                    
+                    <Text fontSize="xs" mb={3} color={theme.subText}>Atur kapan Anda ingin diingatkan untuk Budget/Nabung setiap bulan. (Warning &gt; Rp300rb akan dikirim *realtime*).</Text>
                     <VStack spacing={3}>
                         <FormControl>
                             <FormLabel fontSize="xs">Tanggal Reminder (1 - 28)</FormLabel>
