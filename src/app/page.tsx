@@ -93,9 +93,9 @@ export default function SuperApp() {
     subText: isDark ? "#A3A3A3" : "#8C7E74",
     cardBg: isDark ? "#18181B" : "#FFFFFF",
     cardBorder: isDark ? "whiteAlpha.100" : "gray.100",
-    primary: isDark ? "#E50914" : "#E53E3E", 
-    accent: isDark ? "#B20710" : "#FC8181",
-    homeGradient: isDark ? "linear(to-br, #E50914, #831010)" : "linear(to-br, #E53E3E, #FFFFFF)",
+    primary: isDark ? "#0923e5ff" : "#3e41e5ff", 
+    accent: isDark ? "#34119dff" : "#8198fcff",
+    homeGradient: isDark ? "linear(to-br, #1809e5ff, #101d83ff)" : "linear(to-br, #3ee5abff, #FFFFFF)",
     blob1: isDark ? "red.900" : "red.100",
     blob2: isDark ? "black" : "orange.100",
     success: "#46d369", danger: "#E50914"
