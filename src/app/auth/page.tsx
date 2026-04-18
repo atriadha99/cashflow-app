@@ -3,9 +3,10 @@ import { useState } from "react";
 import {
   Box, Button, Input, VStack, Heading, Text, useToast, Container,
   Tabs, TabList, TabPanels, Tab, TabPanel, FormControl, FormLabel,
-  InputGroup, InputLeftAddon, Icon, Card, CardBody, Link, Modal,
-  ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter
+  InputGroup, InputLeftAddon, Icon, Card, CardBody, Link as ChakraLink, Modal,
+  ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, HStack
 } from "@chakra-ui/react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Lock, Mail, User, Phone as PhoneIcon } from "lucide-react";
@@ -126,6 +127,17 @@ export default function AuthPage() {
                     <Button w="full" size="lg" colorScheme="red" isLoading={loading} loadingText="Masuk..." onClick={() => handleAuth("LOGIN")}>
                       Masuk Sekarang
                     </Button>
+                    
+                    <HStack w="full" justifyContent="center" pt={2}>
+                      <Text fontSize="sm" color="gray.600">
+                        Lupa password?
+                      </Text>
+                      <Link href="/auth/forgot-password">
+                        <Text as="span" fontSize="sm" color="red.500" fontWeight="600" cursor="pointer" _hover={{ textDecoration: "underline" }}>
+                          Reset di sini
+                        </Text>
+                      </Link>
+                    </HStack>
                   </VStack>
                 </TabPanel>
 
